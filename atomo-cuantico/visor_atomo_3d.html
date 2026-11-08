@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visor Cuántico 3D - Escultura v2 (Edición Calcomanía Altavoz)</title>
+    <style>
+        :root {
+            --bg-color: #000000;
+            --panel-bg: rgba(13, 17, 26, 0.88);
+            --panel-border: rgba(255, 255, 255, 0.16);
+            --accent-cyan: #00e5ff;
+            --accent-gold: #ffb000;
+            --accent-magenta: #ff148a;
+            --text-main: #f1f5f9;
+            --text-dim: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+        }
+
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* Modos de fondo de prueba */
+        .bg-black {
+            background-color: #000000 !important;
+            background-image: none !important;
+        }
+        .bg-jbl {
+            background-color: #16181D !important;
+            background-image: radial-gradient(circle at 50% 50%, #242934 0%, #101216 100%) !important;
+        }
+        .bg-checkerboard {
+            background-color: #1a1a24 !important;
+            background-image: 
+                linear-gradient(45deg, #262738 25%, transparent 25%), 
+                linear-gradient(-45deg, #262738 25%, transparent 25%), 
+                linear-gradient(45deg, transparent 75%, #262738 75%), 
+                linear-gradient(-45deg, transparent 75%, #262738 75%) !important;
+            background-size: 24px 24px !important;
+            background-position: 0 0, 0 12px, 12px -12px, -12px 0px !important;
+        }
+
+        #error-banner {
+            display: none;
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(220, 38, 38, 0.95);
+            color: #ffffff;
+            padding: 12px 24px;
+            border-radius: 8px;
+            z-index: 99999;
+            font-size: 13px;
+            font-weight: 600;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.7);
+        }
+
+        /* Panel de Control Flotante Glassmorphism */
+        #ui-panel {
+            position: absolute;
+            top: 18px;
+            right: 18px;
+            width: 350px;
+            max-height: calc(100vh - 36px);
+            background: var(--panel-bg);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border: 1px solid var(--panel-border);
+            border-radius: 14px;
+            padding: 18px;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            gap: 13px;
+            overflow-y: auto;
+            box-shadow: 0 16px 36px rgba(0, 0, 0, 0.75);
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+        }
+
+        #ui-panel::-webkit-scrollbar {
+            width: 6px;
+        }
+        #ui-panel::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.22);
+            border-radius: 3px;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding-bottom: 10px;
+        }
+
+        .header h1 {
+            font-size: 15px;
+            font-weight: 800;
+            letter-spacing: 0.6px;
+            background: linear-gradient(90deg, #00e5ff 0%, #ffb000 50%, #ff148a 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .badge {
+            font-size: 11px;
+            padding: 3px 8px;
+            background: rgba(0, 229, 255, 0.15);
+            color: #00e5ff;
+            border-radius: 12px;
+            border: 1px solid rgba(0, 229, 255, 0.35);
+            font-weight: 600;
+        }
+
+        .section-title {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-dim);
+            font-weight: 700;
+            margin-bottom: 3px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        label {
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #cbd5e1;
+        }
+
+        select, input[type="range"], button {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            color: #fff;
+            border-radius: 8px;
+            padding: 7px 11px;
+            font-size: 12.5px;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        select:focus, button:hover {
+            border-color: var(--accent-cyan);
+            background: rgba(255, 255, 255, 0.11);
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            height: 5px;
+            padding: 0;
+            border: none;
+            background: rgba(255, 255, 255, 0.18);
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 15px;
+            height: 15px;
+            background: var(--accent-cyan);
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(0, 229, 255, 0.8);
+            cursor: pointer;
+        }
+
+        .btn-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 6px;
+        }
+
+        .btn-group button {
+            padding: 6px 4px;
+            font-size: 11px;
+            text-align: center;
+            cursor: pointer;
+            border-radius: 6px;
+        }
+
+        .btn-group button.active {
+            background: rgba(0, 229, 255, 0.22);
+            border-color: var(--accent-cyan);
+            color: var(--accent-cyan);
+            font-weight: 700;
+        }
+
+        .subshell-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 6px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 9px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .subshell-item {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .subshell-item input[type="checkbox"] {
+            accent-color: var(--accent-cyan);
+            width: 14px;
+            height: 14px;
+            cursor: pointer;
+        }
+
+        .dot-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: 0 0 8px currentColor;
+        }
+
+        .btn-action-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            cursor: pointer;
+            font-size: 11.5px;
+            font-weight: 600;
+        }
+
+        .btn-export {
+            background: linear-gradient(135deg, #00e5ff 0%, #0077ff 60%, #ff148a 100%);
+            border: none;
+            color: #ffffff;
+            font-weight: 800;
+            font-size: 13px;
+            padding: 11px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 4px 20px rgba(0, 229, 255, 0.4);
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .btn-export:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 26px rgba(0, 229, 255, 0.65);
+        }
+
+        .btn-export:active {
+            transform: translateY(1px);
+        }
+
+        .status-msg {
+            font-size: 11px;
+            color: var(--text-dim);
+            text-align: center;
+            min-height: 16px;
+        }
+
+        #hud-info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            z-index: 10;
+            background: rgba(13, 17, 26, 0.75);
+            backdrop-filter: blur(12px);
+            padding: 10px 18px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 12px;
+            color: #94a3b8;
+            pointer-events: none;
+            line-height: 1.5;
+        }
+        #hud-info strong {
+            color: #f1f5f9;
+        }
+    </style>
+
+    <!-- Librerías locales con fallback a CDN oficial -->
+    <script src="lib/three.min.js"></script>
+    <script>
+        if (typeof THREE === 'undefined') {
+            document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>');
+        }
+    </script>
+    <script src="lib/OrbitControls.js"></script>
+    <script>
+        if (typeof THREE !== 'undefined' && typeof THREE.OrbitControls === 'undefined') {
+            document.write('<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"><\/script>');
+        }
+    </script>
+</head>
+<body class="bg-black">
+    <div id="error-banner"></div>
+    <div id="canvas-container"></div>
+
+    <div id="ui-panel">
+        <div class="header">
+            <div>
+                <h1>ÁTOMO CUÁNTICO v2</h1>
+                <div style="font-size: 10px; color: var(--text-dim);">Edición Calcomanía Altavoz / Decal</div>
+            </div>
+            <span class="badge" id="point-count-badge">38k orbes</span>
+        </div>
+
+        <!-- Presets -->
+        <div class="control-group">
+            <span class="section-title">Composición Escultórica</span>
+            <select id="preset-select">
+                <option value="sculpture_v2" selected>Escultura v2: Núcleo + 1s/2s + 3dz² + 3dxz</option>
+                <option value="dz2_solo">Solo 3d_z² (Polos + Anillo de Saturno)</option>
+                <option value="dxz_solo">Solo 3d_xz (4 Pétalos Diagonales)</option>
+                <option value="core_solo">Solo Núcleo + Esferas 1s/2s (Corte en Cuña)</option>
+            </select>
+        </div>
+
+        <!-- Umbral Cuántico Tau (tau) -->
+        <div class="control-group">
+            <label>
+                <span>Filtro de Densidad &tau; (Contraste)</span>
+                <span id="tau-val" style="color:var(--accent-gold); font-weight:700;">0.28</span>
+            </label>
+            <input type="range" id="tau-slider" min="0.05" max="0.55" step="0.01" value="0.28">
+        </div>
+
+        <!-- Ángulo de Corte en Cuña -->
+        <div class="control-group">
+            <label>
+                <span>Corte en Cuña Capas s</span>
+                <span id="cut-angle-val" style="color:var(--accent-cyan); font-weight:600;">100°</span>
+            </label>
+            <input type="range" id="cut-angle-slider" min="0" max="160" step="2" value="100">
+        </div>
+
+        <!-- Modos de Color -->
+        <div class="control-group">
+            <span class="section-title">Paleta Cromática</span>
+            <div class="btn-group">
+                <button id="btn-col-trio" class="active">Trío Épico</button>
+                <button id="btn-col-phase">Fase &plusmn;&psi;</button>
+                <button id="btn-col-density">Densidad |&psi;|&sup2;</button>
+            </div>
+        </div>
+
+        <!-- Subcapas Escultóricas v2 -->
+        <div class="control-group">
+            <span class="section-title">Elementos Cuánticos</span>
+            <div class="subshell-grid">
+                <label class="subshell-item">
+                    <input type="checkbox" id="chk-nucleus" checked>
+                    <span class="dot-indicator" style="color:#ffffff; background:#ffffff;"></span>
+                    <span>Núcleo Incandescente</span>
+                </label>
+                <label class="subshell-item">
+                    <input type="checkbox" id="chk-core1s" checked>
+                    <span class="dot-indicator" style="color:#99f6ff; background:#99f6ff;"></span>
+                    <span>Core 1s (Cian Puro)</span>
+                </label>
+                <label class="subshell-item">
+                    <input type="checkbox" id="chk-shell2s" checked>
+                    <span class="dot-indicator" style="color:#00e5ff; background:#00e5ff;"></span>
+                    <span>Capa 2s (Nodo Radial Visible)</span>
+                </label>
+                <label class="subshell-item">
+                    <input type="checkbox" id="chk-poles3dz2" checked>
+                    <span class="dot-indicator" style="color:#ffb000; background:#ffb000;"></span>
+                    <span>3d_z² Polos Verticales (Oro Solar)</span>
+                </label>
+                <label class="subshell-item">
+                    <input type="checkbox" id="chk-ring3dz2" checked>
+                    <span class="dot-indicator" style="color:#ffcc33; background:#ffcc33;"></span>
+                    <span>3d_z² Anillo Saturno 360° (Oro)</span>
+                </label>
+                <label class="subshell-item">
+                    <input type="checkbox" id="chk-petals3dxz" checked>
+                    <span class="dot-indicator" style="color:#ff148a; background:#ff148a;"></span>
+                    <span>3d_xz 4 Pétalos Diagonales (Magenta)</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Sliders de Apariencia de Orbes -->
+        <div class="control-group">
+            <label>
+                <span>Calibre de Orbes</span>
+                <span id="pt-size-val">1.45x</span>
+            </label>
+            <input type="range" id="pt-size-slider" min="0.6" max="3.0" step="0.05" value="1.45">
+        </div>
+
+        <div class="control-group">
+            <label>
+                <span>Intensidad Resplandor Neón</span>
+                <span id="glow-val">1.35x</span>
+            </label>
+            <input type="range" id="glow-slider" min="0.4" max="2.6" step="0.05" value="1.35">
+        </div>
+
+        <!-- Fondo de Previsualización -->
+        <div class="control-group">
+            <span class="section-title">Superficie de Prueba</span>
+            <div class="btn-group">
+                <button id="btn-bg-black" class="active">Negro Puro</button>
+                <button id="btn-bg-jbl">Altavoz JBL</button>
+                <button id="btn-bg-check">Damero</button>
+            </div>
+        </div>
+
+        <!-- Acciones: Reset Cámara y Exportación -->
+        <div class="btn-action-row">
+            <button id="btn-reset-cam" class="btn-secondary">
+                ↺ Ángulo Óptimo Decal
+            </button>
+            <button id="btn-autorotate" class="btn-secondary">
+                ▶ Giro Automático
+            </button>
+        </div>
+
+        <!-- Botón Exportar 4K -->
+        <button id="btn-export-4k" class="btn-export">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Exportar PNG 4K Transparente
+        </button>
+        <div id="status-msg" class="status-msg">Listo para interactuar en tiempo real</div>
+    </div>
+
+    <div id="hud-info">
+        Ángulo Decal Calibrado: <strong>Azimut -76.0° | Elevación +13.5°</strong><br>
+        Rotar: <strong>Clic Izq + Arrastrar</strong> | Zoom: <strong>Rueda</strong> | Desplazar: <strong>Clic Der</strong>
+    </div>
+
+    <!-- Script de Lógica Cuántica v2 y WebGL Three.js -->
+    <script>
+        window.addEventListener('error', function(err) {
+            var banner = document.getElementById('error-banner');
+            if (banner) {
+                banner.style.display = 'block';
+                banner.innerText = 'Error en Visor 3D: ' + (err.message || err);
+            }
+        });
+
+        (function() {
+            if (typeof THREE === 'undefined') {
+                document.getElementById('error-banner').style.display = 'block';
+                document.getElementById('error-banner').innerText = 'No se pudo cargar Three.js.';
+                return;
+            }
+
+            var degToRad = function(deg) { return deg * Math.PI / 180.0; };
+
+            var SUBSHELL_V2 = {
+                NUCLEUS: 0,
+                CORE_1S: 1,
+                SHELL_2S: 2,
+                POLES_3DZ2: 3,
+                RING_3DZ2: 4,
+                PETALS_3DXZ: 5
+            };
+
+            var subCheckboxes = {
+                'chk-nucleus': SUBSHELL_V2.NUCLEUS,
+                'chk-core1s': SUBSHELL_V2.CORE_1S,
+                'chk-shell2s': SUBSHELL_V2.SHELL_2S,
+                'chk-poles3dz2': SUBSHELL_V2.POLES_3DZ2,
+                'chk-ring3dz2': SUBSHELL_V2.RING_3DZ2,
+                'chk-petals3dxz': SUBSHELL_V2.PETALS_3DXZ
+            };
+
+            // --- 1. MATEMÁTICA CUÁNTICA EXACTA NORMALIZADA POR CAPA ---
+            function genLaguerre(k, alpha, x) {
+                if (k === 0) return 1.0;
+                var L_prev = 1.0;
+                var L_curr = 1.0 + alpha - x;
+                if (k === 1) return L_curr;
+                for (var j = 1; j < k; j++) {
+                    var L_next = ((2 * j + 1 + alpha - x) * L_curr - (j + alpha) * L_prev) / (j + 1);
+                    L_prev = L_curr;
+                    L_curr = L_next;
+                }
+                return L_curr;
+            }
+
+            var FACT = [1, 1, 2, 6, 24, 120, 720, 5040, 40320, 362880, 3628800];
+            function factorial(n) { return n <= 10 ? FACT[n] : FACT[10]; }
+
+            function radialR(n, l, Z_eff, r) {
+                var rho = (2.0 * Z_eff * r) / n;
+                var k = n - l - 1;
+                var alpha = 2 * l + 1;
+                var norm = Math.sqrt(Math.pow((2.0 * Z_eff / n), 3) * (factorial(k) / (2.0 * n * factorial(n + l))));
+                var L_val = genLaguerre(k, alpha, rho);
+                return norm * Math.exp(-0.5 * rho) * Math.pow(rho, l) * L_val;
+            }
+
+            // Normalización exacta P_r = r^2 * R^2 idéntica a quantum_core.py
+            function getShellNormalizedRadial(n, l, Z_eff, steps) {
+                steps = steps || 1024;
+                var r_max = (n / Z_eff) * (3.0 * n + 14.0);
+                var r_grid = new Float32Array(steps);
+                var P_r = new Float32Array(steps);
+                var S_r = new Float32Array(steps);
+                var cdf = new Float32Array(steps);
+                var dr = r_max / (steps - 1);
+
+                var max_P = 0;
+                for (var i = 0; i < steps; i++) {
+                    var r = Math.max(1e-4, i * dr);
+                    r_grid[i] = r;
+                    var R = radialR(n, l, Z_eff, r);
+                    var P = r * r * R * R;
+                    P_r[i] = P;
+                    if (P > max_P) max_P = P;
+                }
+
+                if (max_P > 0) {
+                    for (var i = 0; i < steps; i++) S_r[i] = P_r[i] / max_P;
+                }
+
+                var sum = 0;
+                for (var i = 0; i < steps; i++) {
+                    if (i > 0) sum += 0.5 * (P_r[i] + P_r[i - 1]) * dr;
+                    cdf[i] = sum;
+                }
+                var total = cdf[steps - 1] || 1.0;
+                for (var i = 0; i < steps; i++) cdf[i] /= total;
+
+                return {
+                    sample_r: function() {
+                        var u = Math.random();
+                        var low = 0, high = steps - 1;
+                        while (low < high) {
+                            var mid = (low + high) >> 1;
+                            if (cdf[mid] < u) low = mid + 1;
+                            else high = mid;
+                        }
+                        var idx = Math.max(1, low);
+                        var t = (u - cdf[idx - 1]) / (cdf[idx] - cdf[idx - 1] + 1e-8);
+                        return r_grid[idx - 1] + t * dr;
+                    },
+                    eval_S: function(r) {
+                        if (r <= 0 || r >= r_max) return 0.0;
+                        var fi = r / dr;
+                        var i = Math.floor(fi);
+                        if (i >= steps - 1) return 0.0;
+                        var t = fi - i;
+                        return S_r[i] * (1.0 - t) + S_r[i + 1] * t;
+                    }
+                };
+            }
+
+            // --- 2. CONFIGURACIÓN THREE.JS ---
+
+            var container = document.getElementById('canvas-container');
+            var width = window.innerWidth;
+            var height = window.innerHeight;
+
+            var scene = new THREE.Scene();
+
+            var camera = new THREE.PerspectiveCamera(40, width / height, 0.5, 600);
+            camera.up.set(0, 0, 1);
+
+            function setCalibratedDecalView() {
+                var dist = 85.0;
+                var azimRad = degToRad(-76.0);
+                var elevRad = degToRad(13.5);
+                var cosEl = Math.cos(elevRad);
+                var sinEl = Math.sin(elevRad);
+
+                camera.position.set(
+                    dist * cosEl * Math.sin(azimRad),
+                    dist * cosEl * Math.cos(azimRad),
+                    dist * sinEl
+                );
+                camera.lookAt(0, 0, 0);
+            }
+            setCalibratedDecalView();
+
+            var renderer = new THREE.WebGLRenderer({
+                alpha: true,
+                antialias: true,
+                preserveDrawingBuffer: true,
+                powerPreference: "high-performance"
+            });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1.0, 2.0));
+            renderer.setClearColor(0x000000, 0);
+            container.appendChild(renderer.domElement);
+
+            var controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.target.set(0, 0, 0);
+            controls.autoRotate = false;
+            controls.autoRotateSpeed = 1.0;
+
+            // --- 3. SHADER DE ORBES CUÁNTICOS MACRO ---
+
+            var vertexShader = [
+                'uniform float uPointSize;',
+                'uniform float uPixelRatio;',
+                'uniform float uCutAngle;',
+                'uniform float uCutDir;',
+                'uniform float uTau;',
+                'uniform int uColorMode;',
+
+                'attribute vec3 aColor;',
+                'attribute vec3 aPhaseColor;',
+                'attribute float aDensity;',
+                'attribute float aCutFlag;',
+                'attribute float aSubshellId;',
+                'attribute float aIsVisible;',
+
+                'varying vec3 vColor;',
+                'varying float vDensity;',
+
+                'void main() {',
+                '    vDensity = aDensity;',
+
+                '    if (aIsVisible < 0.5) {',
+                '        gl_Position = vec4(2.0, 2.0, 2.0, 1.0);',
+                '        gl_PointSize = 0.0;',
+                '        return;',
+                '    }',
+
+                '    if (aSubshellId >= 1.0 && aDensity < uTau) {',
+                '        gl_Position = vec4(2.0, 2.0, 2.0, 1.0);',
+                '        gl_PointSize = 0.0;',
+                '        return;',
+                '    }',
+
+                '    if (aCutFlag > 0.5 && uCutAngle > 0.001) {',
+                '        float phi = atan(position.y, position.x);',
+                '        float dphi = atan(sin(phi - uCutDir), cos(phi - uCutDir));',
+                '        if (abs(dphi) < uCutAngle && position.z > -0.35 * length(position.xy)) {',
+                '            gl_Position = vec4(2.0, 2.0, 2.0, 1.0);',
+                '            gl_PointSize = 0.0;',
+                '            return;',
+                '        }',
+                '    }',
+
+                '    if (uColorMode == 0) {',
+                '        vColor = aColor;',
+                '    } else if (uColorMode == 1) {',
+                '        vColor = aPhaseColor;',
+                '    } else {',
+                '        vec3 colLow = vec3(0.0, 0.9, 1.0);',
+                '        vec3 colMid = vec3(1.0, 0.08, 0.54);',
+                '        vec3 colHigh = vec3(1.0, 0.9, 0.2);',
+                '        vec3 c = mix(colLow, colMid, smoothstep(0.0, 0.5, aDensity));',
+                '        vColor = mix(c, colHigh, smoothstep(0.5, 1.0, aDensity));',
+                '    }',
+
+                '    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);',
+                '    gl_Position = projectionMatrix * mvPosition;',
+
+                '    float ptScale = uPointSize * mix(6.0, 16.0, aDensity);',
+                '    gl_PointSize = ptScale * (140.0 / -mvPosition.z) * uPixelRatio;',
+                '}'
+            ].join('\n');
+
+            var fragmentShader = [
+                'uniform float uGlowIntensity;',
+                'varying vec3 vColor;',
+                'varying float vDensity;',
+
+                'void main() {',
+                '    vec2 coord = gl_PointCoord - vec2(0.5);',
+                '    float r2 = dot(coord, coord);',
+                '    if (r2 > 0.25) discard;',
+
+                '    float r = sqrt(r2) * 2.0;',
+
+                '    float core = exp(-6.5 * r * r);',
+                '    float halo = pow(clamp(1.0 - r, 0.0, 1.0), 1.6);',
+                '    float alpha = clamp(0.75 * core + 0.35 * halo, 0.0, 1.0);',
+
+                '    vec3 col = mix(vColor, vec3(1.0, 1.0, 1.0), core * 0.85);',
+                '    col *= (1.0 + 0.4 * vDensity) * uGlowIntensity;',
+
+                '    gl_FragColor = vec4(col * alpha, alpha);',
+                '}'
+            ].join('\n');
+
+            var quantumUniforms = {
+                uPointSize: { value: 1.45 },
+                uPixelRatio: { value: Math.min(window.devicePixelRatio || 1.0, 2.0) },
+                uCutAngle: { value: degToRad(50.0) }, // 100° total
+                uCutDir: { value: degToRad(35.0) },
+                uTau: { value: 0.28 },
+                uColorMode: { value: 0 },
+                uGlowIntensity: { value: 1.35 }
+            };
+
+            var quantumMaterial = new THREE.ShaderMaterial({
+                vertexShader: vertexShader,
+                fragmentShader: fragmentShader,
+                uniforms: quantumUniforms,
+                transparent: true,
+                depthWrite: false,
+                blending: THREE.CustomBlending,
+                blendSrc: THREE.OneFactor,
+                blendDst: THREE.OneMinusSrcAlphaFactor,
+                blendSrcAlpha: THREE.OneFactor,
+                blendDstAlpha: THREE.OneMinusSrcAlphaFactor
+            });
+
+            var pointCloudMesh = null;
+            var particleDataCache = null;
+
+            function updateSubshellVisibility() {
+                if (!particleDataCache) return;
+                var geom = particleDataCache.geometry;
+                var subIds = geom.attributes.aSubshellId.array;
+                var isVis = geom.attributes.aIsVisible.array;
+
+                var state = {};
+                for (var key in subCheckboxes) {
+                    if (subCheckboxes.hasOwnProperty(key)) {
+                        var sId = subCheckboxes[key];
+                        var el = document.getElementById(key);
+                        state[sId] = el ? el.checked : true;
+                    }
+                }
+
+                for (var i = 0; i < subIds.length; i++) {
+                    var sId = subIds[i];
+                    isVis[i] = (state[sId] !== false) ? 1.0 : 0.0;
+                }
+                geom.attributes.aIsVisible.needsUpdate = true;
+            }
+
+            // --- 4. GENERADOR ESTRATIFICADO DE ESCULTURA CUÁNTICA v2 ---
+
+            function generateSculpturalAtom(presetKey) {
+                presetKey = presetKey || 'sculpture_v2';
+                var positions = [];
+                var colors = [];
+                var phaseColors = [];
+                var densities = [];
+                var cutFlags = [];
+                var subshellIds = [];
+                var isVisible = [];
+
+                function addParticle(x, y, z, baseRgb, phaseSign, dens, canCut, subId) {
+                    positions.push(x, y, z);
+                    colors.push(baseRgb[0], baseRgb[1], baseRgb[2]);
+                    if (phaseSign >= 0) {
+                        phaseColors.push(0.0, 0.9, 1.0);
+                    } else {
+                        phaseColors.push(1.0, 0.08, 0.54);
+                    }
+                    densities.push(dens);
+                    cutFlags.push(canCut ? 1.0 : 0.0);
+                    subshellIds.push(subId);
+                    isVisible.push(1.0);
+                }
+
+                // 1. Núcleo Cuántico Incandescente (650 orbes macro, r < 0.45)
+                var nucPts = 650;
+                for (var i = 0; i < nucPts; i++) {
+                    var u = Math.random();
+                    var r = 0.42 * Math.sqrt(u);
+                    var z_h = Math.random() * 2 - 1;
+                    var phi = Math.random() * 2 * Math.PI;
+                    var r_xy = Math.sqrt(Math.max(0, 1 - z_h * z_h));
+                    var dens = Math.exp(-Math.pow(r / 0.22, 2));
+                    addParticle(r * r_xy * Math.cos(phi), r * r_xy * Math.sin(phi), r * z_h, [1.0, 1.0, 1.0], 1.0, dens, false, SUBSHELL_V2.NUCLEUS);
+                }
+
+                // 2. Core 1s (2200 orbes, Cian luminoso, r < 1.8)
+                if (presetKey === 'sculpture_v2' || presetKey === 'core_solo') {
+                    var s1s = getShellNormalizedRadial(1, 0, 2.60);
+                    var c1s = 0;
+                    while (c1s < 2200) {
+                        var z_h = Math.random() * 2 - 1;
+                        var phi = Math.random() * 2 * Math.PI;
+                        var r_xy = Math.sqrt(Math.max(0, 1 - z_h * z_h));
+                        var r = s1s.sample_r();
+                        if (r < 1.8) {
+                            var S_val = s1s.eval_S(r);
+                            if (S_val >= 0.22) {
+                                addParticle(r * r_xy * Math.cos(phi), r * r_xy * Math.sin(phi), r * z_h, [0.40, 1.0, 1.0], 1.0, S_val, true, SUBSHELL_V2.CORE_1S);
+                                c1s++;
+                            }
+                        }
+                    }
+                }
+
+                // 3. Capa 2s (5800 orbes, Cian Eléctrico con nodo radial, 1.4 < r < 4.2)
+                if (presetKey === 'sculpture_v2' || presetKey === 'core_solo') {
+                    var s2s = getShellNormalizedRadial(2, 0, 2.25);
+                    var c2s = 0;
+                    while (c2s < 5800) {
+                        var z_h = Math.random() * 2 - 1;
+                        var phi = Math.random() * 2 * Math.PI;
+                        var r_xy = Math.sqrt(Math.max(0, 1 - z_h * z_h));
+                        var r = s2s.sample_r();
+                        if (r >= 1.4 && r <= 4.2) {
+                            var S_val = s2s.eval_S(r);
+                            if (S_val >= 0.26) {
+                                var R_raw = radialR(2, 0, 2.25, r);
+                                var phase = R_raw >= 0 ? 1.0 : -1.0;
+                                addParticle(r * r_xy * Math.cos(phi), r * r_xy * Math.sin(phi), r * z_h, [0.0, 0.9, 1.0], phase, S_val, true, SUBSHELL_V2.SHELL_2S);
+                                c2s++;
+                            }
+                        }
+                    }
+                }
+
+                // 4. Polos 3d_z² (9200 orbes, Oro Solar #FFB000)
+                if (presetKey === 'sculpture_v2' || presetKey === 'dz2_solo') {
+                    var s3d_poles = getShellNormalizedRadial(3, 2, 0.72);
+                    var cPoles = 0;
+                    var targetPoles = presetKey === 'dz2_solo' ? 20000 : 9200;
+                    while (cPoles < targetPoles) {
+                        var z_h = Math.random() * 2 - 1;
+                        var phi = Math.random() * 2 * Math.PI;
+                        var r_xy = Math.sqrt(Math.max(0, 1 - z_h * z_h));
+                        var ang_raw = 3.0 * (z_h * z_h) - 1.0;
+                        if (ang_raw > 0.0) {
+                            var ang_term = Math.pow(ang_raw / 2.0, 5);
+                            var r = s3d_poles.sample_r();
+                            if (r > 4.8 && r < 21.0) {
+                                var S_val = s3d_poles.eval_S(r);
+                                var P = S_val * ang_term;
+                                if (P >= 0.28) {
+                                    addParticle(r * r_xy * Math.cos(phi), r * r_xy * Math.sin(phi), r * z_h, [1.0, 0.69, 0.0], 1.0, P, false, SUBSHELL_V2.POLES_3DZ2);
+                                    cPoles++;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 5. Anillo de Saturno 3d_z² (8800 orbes, 360° completo, Oro / Ámbar #FFB703)
+                if (presetKey === 'sculpture_v2' || presetKey === 'dz2_solo') {
+                    var s3d_ring = getShellNormalizedRadial(3, 2, 0.88);
+                    var cRing = 0;
+                    var targetRing = presetKey === 'dz2_solo' ? 18000 : 8800;
+                    while (cRing < targetRing) {
+                        var z_h = Math.random() * 2 - 1;
+                        var phi = Math.random() * 2 * Math.PI;
+                        var r_xy = Math.sqrt(Math.max(0, 1 - z_h * z_h));
+                        var ang_raw = 3.0 * (z_h * z_h) - 1.0;
+                        if (ang_raw < 0.0) {
+                            var ang_term = Math.pow((-ang_raw) / 1.0, 8);
+                            var r = s3d_ring.sample_r();
+                            if (r > 5.0 && r < 18.0) {
+                                var S_val = s3d_ring.eval_S(r);
+                                var P = S_val * ang_term;
+                                if (P >= 0.28) {
+                                    addParticle(r * r_xy * Math.cos(phi), r * r_xy * Math.sin(phi), r * z_h, [1.0, 0.72, 0.01], -1.0, P, false, SUBSHELL_V2.RING_3DZ2);
+                                    cRing++;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 6. 4 Pétalos 3d_xz (12000 orbes, Magenta Láser #FF148A / Violeta Eléctrico #9D4EDD)
+                if (presetKey === 'sculpture_v2' || presetKey === 'dxz_solo') {
+                    var s3d_xz = getShellNormalizedRadial(3, 2, 0.68);
+                    var cPetals = 0;
+                    var targetPetals = presetKey === 'dxz_solo' ? 24000 : 12000;
+                    while (cPetals < targetPetals) {
+                        var z_h = Math.random() * 2 - 1;
+                        var phi = Math.random() * 2 * Math.PI;
+                        var r_xy = Math.sqrt(Math.max(0, 1 - z_h * z_h));
+                        var x_h = r_xy * Math.cos(phi);
+                        var y_h = r_xy * Math.sin(phi);
+
+                        var ang_term = Math.pow(Math.abs(2.0 * x_h * z_h), 6);
+                        var r = s3d_xz.sample_r();
+                        if (r > 4.8 && r < 21.0) {
+                            var S_val = s3d_xz.eval_S(r);
+                            var P = S_val * ang_term;
+                            if (P >= 0.28) {
+                                var phase = (x_h * z_h >= 0) ? 1.0 : -1.0;
+                                var col = (phase > 0) ? [1.0, 0.08, 0.54] : [0.62, 0.31, 0.87];
+                                addParticle(r * x_h, r * y_h, r * z_h, col, phase, P, false, SUBSHELL_V2.PETALS_3DXZ);
+                                cPetals++;
+                            }
+                        }
+                    }
+                }
+
+                var geometry = new THREE.BufferGeometry();
+                geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                geometry.setAttribute('aColor', new THREE.Float32BufferAttribute(colors, 3));
+                geometry.setAttribute('aPhaseColor', new THREE.Float32BufferAttribute(phaseColors, 3));
+                geometry.setAttribute('aDensity', new THREE.Float32BufferAttribute(densities, 1));
+                geometry.setAttribute('aCutFlag', new THREE.Float32BufferAttribute(cutFlags, 1));
+                geometry.setAttribute('aSubshellId', new THREE.Float32BufferAttribute(subshellIds, 1));
+                geometry.setAttribute('aIsVisible', new THREE.Float32BufferAttribute(isVisible, 1));
+
+                if (pointCloudMesh) {
+                    scene.remove(pointCloudMesh);
+                    pointCloudMesh.geometry.dispose();
+                }
+
+                pointCloudMesh = new THREE.Points(geometry, quantumMaterial);
+                scene.add(pointCloudMesh);
+
+                particleDataCache = { geometry: geometry, count: positions.length / 3 };
+                var badgeEl = document.getElementById('point-count-badge');
+                if (badgeEl) {
+                    badgeEl.innerText = Math.round(particleDataCache.count / 1000) + 'k orbes';
+                }
+                updateSubshellVisibility();
+            }
+
+            // Inicializar con escultura v2
+            generateSculpturalAtom('sculpture_v2');
+
+            // --- 5. EVENTOS UI ---
+
+            document.getElementById('preset-select').addEventListener('change', function(e) {
+                generateSculpturalAtom(e.target.value);
+            });
+
+            var tauSlider = document.getElementById('tau-slider');
+            var tauValLabel = document.getElementById('tau-val');
+            tauSlider.addEventListener('input', function(e) {
+                var val = parseFloat(e.target.value);
+                tauValLabel.innerText = val.toFixed(2);
+                quantumUniforms.uTau.value = val;
+            });
+
+            var cutSlider = document.getElementById('cut-angle-slider');
+            var cutValLabel = document.getElementById('cut-angle-val');
+            cutSlider.addEventListener('input', function(e) {
+                var deg = parseFloat(e.target.value);
+                cutValLabel.innerText = deg + '°';
+                quantumUniforms.uCutAngle.value = degToRad(deg * 0.5);
+            });
+
+            document.getElementById('pt-size-slider').addEventListener('input', function(e) {
+                var v = parseFloat(e.target.value);
+                document.getElementById('pt-size-val').innerText = v.toFixed(2) + 'x';
+                quantumUniforms.uPointSize.value = v;
+            });
+
+            document.getElementById('glow-slider').addEventListener('input', function(e) {
+                var v = parseFloat(e.target.value);
+                document.getElementById('glow-val').innerText = v.toFixed(2) + 'x';
+                quantumUniforms.uGlowIntensity.value = v;
+            });
+
+            var btnTrio = document.getElementById('btn-col-trio');
+            var btnPhase = document.getElementById('btn-col-phase');
+            var btnDens = document.getElementById('btn-col-density');
+
+            function setActiveColorBtn(activeBtn, modeInt) {
+                [btnTrio, btnPhase, btnDens].forEach(function(b) { b.classList.remove('active'); });
+                activeBtn.classList.add('active');
+                quantumUniforms.uColorMode.value = modeInt;
+            }
+
+            btnTrio.addEventListener('click', function() { setActiveColorBtn(btnTrio, 0); });
+            btnPhase.addEventListener('click', function() { setActiveColorBtn(btnPhase, 1); });
+            btnDens.addEventListener('click', function() { setActiveColorBtn(btnDens, 2); });
+
+            var btnBgBlack = document.getElementById('btn-bg-black');
+            var btnBgJbl = document.getElementById('btn-bg-jbl');
+            var btnBgCheck = document.getElementById('btn-bg-check');
+
+            function setActiveBg(btn, className) {
+                [btnBgBlack, btnBgJbl, btnBgCheck].forEach(function(b) { b.classList.remove('active'); });
+                btn.classList.add('active');
+                document.body.className = className;
+            }
+
+            btnBgBlack.addEventListener('click', function() { setActiveBg(btnBgBlack, 'bg-black'); });
+            btnBgJbl.addEventListener('click', function() { setActiveBg(btnBgJbl, 'bg-jbl'); });
+            btnBgCheck.addEventListener('click', function() { setActiveBg(btnBgCheck, 'bg-checkerboard'); });
+
+            for (var chkId in subCheckboxes) {
+                if (subCheckboxes.hasOwnProperty(chkId)) {
+                    var el = document.getElementById(chkId);
+                    if (el) el.addEventListener('change', updateSubshellVisibility);
+                }
+            }
+
+            document.getElementById('btn-reset-cam').addEventListener('click', function() {
+                setCalibratedDecalView();
+                controls.target.set(0, 0, 0);
+                controls.update();
+            });
+
+            var btnAutoRot = document.getElementById('btn-autorotate');
+            btnAutoRot.addEventListener('click', function() {
+                controls.autoRotate = !controls.autoRotate;
+                btnAutoRot.innerText = controls.autoRotate ? "⏸ Detener Giro" : "▶ Giro Automático";
+                btnAutoRot.style.borderColor = controls.autoRotate ? "var(--accent-cyan)" : "rgba(255, 255, 255, 0.2)";
+            });
+
+            // --- 6. EXPORTACIÓN 4K ---
+
+            var btnExport = document.getElementById('btn-export-4k');
+            var statusMsg = document.getElementById('status-msg');
+
+            btnExport.addEventListener('click', function() {
+                btnExport.disabled = true;
+                statusMsg.innerText = "Calculando búfer 4K (3840×3840)...";
+                statusMsg.style.color = "#00e5ff";
+
+                var originalAspect = camera.aspect;
+                var targetSize = 3840;
+
+                camera.aspect = 1.0;
+                camera.updateProjectionMatrix();
+                renderer.setSize(targetSize, targetSize, false);
+                quantumUniforms.uPixelRatio.value = 1.0;
+
+                renderer.render(scene, camera);
+
+                statusMsg.innerText = "Codificando PNG transparente...";
+
+                renderer.domElement.toBlob(function(blob) {
+                    if (blob) {
+                        var url = URL.createObjectURL(blob);
+                        var link = document.createElement('a');
+                        link.href = url;
+                        link.download = 'atomo_cuantico_sculpture_4k.png';
+                        link.click();
+                        URL.revokeObjectURL(url);
+                        statusMsg.innerText = "¡Exportación 4K descargada con éxito!";
+                        statusMsg.style.color = "#4ade80";
+                    } else {
+                        statusMsg.innerText = "Error en la exportación PNG.";
+                        statusMsg.style.color = "#ef4444";
+                    }
+
+                    camera.aspect = originalAspect;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(window.innerWidth, window.innerHeight);
+                    quantumUniforms.uPixelRatio.value = Math.min(window.devicePixelRatio || 1.0, 2.0);
+                    btnExport.disabled = false;
+
+                    setTimeout(function() {
+                        statusMsg.innerText = "Listo para interactuar en tiempo real";
+                        statusMsg.style.color = "var(--text-dim)";
+                    }, 4000);
+                }, 'image/png');
+            });
+
+            window.addEventListener('resize', function() {
+                width = window.innerWidth;
+                height = window.innerHeight;
+                camera.aspect = width / height;
+                camera.updateProjectionMatrix();
+                renderer.setSize(width, height);
+                quantumUniforms.uPixelRatio.value = Math.min(window.devicePixelRatio || 1.0, 2.0);
+            });
+
+            function animate() {
+                requestAnimationFrame(animate);
+                controls.update();
+                renderer.render(scene, camera);
+            }
+            animate();
+        })();
+    </script>
+</body>
+</html>

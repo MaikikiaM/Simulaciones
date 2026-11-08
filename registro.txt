@@ -1,0 +1,12 @@
+================================================================================
+SESIÓN: 08/11/2026 - INICIALIZACIÓN DEL PROYECTO SIMULACIONES
+================================================================================
+
+**Prompts del usuario:**
+- "Adelante /boost /goal"
+
+**Acciones aplicadas:**
+1. Creación del repositorio Simulaciones para proyectos de computación científica y física computacional.
+2. Migración del módulo Átomo Cuántico (quantum_core.py, render_atomo_4k.py, visor_atomo_3d.html) a atomo-cuantico/.
+3. Configuración del visor interactivo 3D Three.js y validación de librerías numéricas (scipy/numpy).
+================================================================================
