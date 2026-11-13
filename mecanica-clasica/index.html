@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laboratorio Interactivo — Sistemas de Partículas y Sólido Rígido</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <!-- Barra Superior de Control -->
+    <header class="topbar">
+        <div class="brand">
+            <div class="brand-badge">Φ</div>
+            <div>
+                <h1>Mecánica Clásica · Simulador RK4</h1>
+                <span>Sistemas de Partículas (T5) &amp; Sólido Rígido (T6)</span>
+            </div>
+        </div>
+
+        <div class="transport">
+            <button id="btn-play" class="btn btn-primary">▶ Iniciar</button>
+            <button id="btn-step" class="btn" title="Avanzar un paso Δt">⏭ +Paso</button>
+            <button id="btn-reset" class="btn" title="Reiniciar simulación">↺ Reiniciar</button>
+            <select id="speed-select" class="speed-select" title="Velocidad de simulación">
+                <option value="0.25">0.25×</option>
+                <option value="0.5">0.5×</option>
+                <option value="1" selected>1.0×</option>
+                <option value="2">2.0×</option>
+                <option value="4">4.0×</option>
+            </select>
+            <div id="time-display" class="time-pill">t = 0.00 s</div>
+            <span id="mode-badge" class="mode-badge preset">Valores del problema</span>
+        </div>
+    </header>
+
+    <!-- Área Principal en 3 Columnas -->
+    <main class="workspace">
+        <!-- Columna Izquierda: Ruta Pedagógica desde 0 -->
+        <aside class="sidebar">
+            <section>
+                <div class="topic-header">
+                    <span>Sistemas de Partículas</span>
+                    <span>T5 · 6 niveles</span>
+                </div>
+                <div id="list-particles" class="problem-list"></div>
+            </section>
+
+            <section>
+                <div class="topic-header">
+                    <span>Sólido Rígido</span>
+                    <span>T6 · 7 niveles</span>
+                </div>
+                <div id="list-rigid" class="problem-list"></div>
+            </section>
+        </aside>
+
+        <!-- Columna Central: Viewport 2D/3D + Gráficas de Conservación -->
+        <section class="stage">
+            <div class="viewport-wrap">
+                <canvas id="canvas-2d"></canvas>
+                <div id="container-3d"></div>
+
+                <div class="viewport-toolbar">
+                    <div id="vector-toggles" class="vector-toggles">
+                        <label class="chk-chip"><input type="checkbox" id="chk-vel" checked> Velocidad v</label>
+                        <label class="chk-chip"><input type="checkbox" id="chk-mom" checked> Momento P</label>
+                        <label class="chk-chip"><input type="checkbox" id="chk-force" checked> Fuerzas F / f_r</label>
+                        <label class="chk-chip"><input type="checkbox" id="chk-trails" checked> Trayectorias</label>
+                        <label class="chk-chip"><input type="checkbox" id="chk-cm" checked> Centro de Masas</label>
+                    </div>
+                    <div class="viewport-actions">
+                        <button id="btn-reset-view" class="btn" style="padding:4px 9px;font-size:11px;">⌖ Centrar vista</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="charts-strip">
+                <div class="chart-box">
+                    <canvas id="chart-energy"></canvas>
+                </div>
+                <div class="chart-box">
+                    <canvas id="chart-momentum"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Columna Derecha: Enunciado, Parámetros, Solución Analítica y Guía -->
+        <aside class="inspector">
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="params">Parámetros</button>
+                <button class="tab-btn" data-tab="solution">Solución vs RK4</button>
+                <button class="tab-btn" data-tab="guide">Desde 0</button>
+            </div>
+
+            <!-- Tab 1: Enunciado, Sliders y Telemetría -->
+            <div id="tab-params" class="tab-content active">
+                <div class="card">
+                    <div class="card-title">
+                        <span id="prob-code">T5 · P3</span>
+                        <button id="btn-preset" class="btn btn-gold" style="padding:3px 8px;font-size:11px;">Restaurar enunciado</button>
+                    </div>
+                    <h2 id="prob-title" style="font-size:14px;margin-bottom:6px;"></h2>
+                    <p id="prob-statement" class="statement-text"></p>
+                </div>
+
+                <div id="prob-goal" class="goal-box"></div>
+
+                <div id="quick-actions-card" class="card" style="display:none;">
+                    <div class="card-title"><span>Casos rápidos del problema</span></div>
+                    <div id="quick-actions" class="quick-actions"></div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title"><span>Experimenta con los parámetros</span></div>
+                    <div id="params-container"></div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title"><span>Telemetría instantánea</span></div>
+                    <div id="telemetry-grid" class="telemetry-grid"></div>
+                </div>
+            </div>
+
+            <!-- Tab 2: Solución Paso a Paso y Comparativa Live -->
+            <div id="tab-solution" class="tab-content">
+                <div class="card">
+                    <div class="card-title"><span>Teórico vs Simulación Numérica (RK4)</span></div>
+                    <table class="cmp-table">
+                        <thead>
+                            <tr>
+                                <th>Magnitud</th>
+                                <th>Teórico</th>
+                                <th>RK4</th>
+                                <th>Error</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cmp-tbody"></tbody>
+                    </table>
+                </div>
+
+                <div id="steps-container" style="display:flex;flex-direction:column;gap:8px;"></div>
+            </div>
+
+            <!-- Tab 3: Guía Conceptual desde 0 -->
+            <div id="tab-guide" class="tab-content">
+                <div class="goal-box" id="guide-goal"></div>
+                <div id="guide-container" style="display:flex;flex-direction:column;gap:9px;"></div>
+            </div>
+        </aside>
+    </main>
+
+    <!-- Librerías Locales (Compatible con file:// sin servidor) -->
+    <script src="lib/three.min.js"></script>
+    <script src="lib/OrbitControls.js"></script>
+    <script src="js/rk4.js"></script>
+    <script src="js/problems_particles.js"></script>
+    <script src="js/problems_rigid.js"></script>
+    <script src="js/problems_catalog.js"></script>
+    <script src="js/renderer2d.js"></script>
+    <script src="js/renderer3d.js"></script>
+    <script src="js/charts.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

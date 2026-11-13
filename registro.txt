@@ -10,3 +10,23 @@ SESIÓN: 08/11/2026 - INICIALIZACIÓN DEL PROYECTO SIMULACIONES
 2. Migración del módulo Átomo Cuántico (quantum_core.py, render_atomo_4k.py, visor_atomo_3d.html) a atomo-cuantico/.
 3. Configuración del visor interactivo 3D Three.js y validación de librerías numéricas (scipy/numpy).
 ================================================================================
+
+================================================================================
+SESIÓN: 13/11/2026 - LABORATORIO INTERACTIVO DE MECÁNICA CLÁSICA (T5 Y T6)
+================================================================================
+
+**Prompts del usuario:**
+- "Adelante /goal /boost Dedicale mucho tiempo y atencion" (sobre las hojas `Problemas T5.pdf` y `Hoja_problemas_team6.pdf`)
+
+**Acciones aplicadas:**
+1. Creación de `mecanica-clasica/` con aplicación web autónoma compatible con `file://` (`index.html`, `css/styles.css`, `js/rk4.js`, `js/problems_particles.js`, `js/problems_rigid.js`, `js/problems_catalog.js`, `js/renderer2d.js`, `js/renderer3d.js`, `js/charts.js`, `js/app.js`, `lib/{three.min.js, OrbitControls.js}`).
+2. Implementación de los 13 problemas en orden pedagógico desde 0:
+   - Sistemas de Partículas (`Problemas T5.pdf`): `T5·P3`, `T5·P9`, `T5·P6`, `T5·P12`, `T5·P16`, `T5·P15`.
+   - Sólido Rígido (`Hoja_problemas_team6.pdf`): `T6·P2`, `T6·P8`, `T6·P3`, `T6·P4`, `T6·P11`, `T6·P10`, `T6·P1`.
+3. Revisión exhaustiva y correcciones:
+   - Sentido de giro horario correcto en `T6·P8` (`phi: y[2]`).
+   - Detección de colisiones módulo 2π en `T5·P9` cuando una bola completa una vuelta.
+   - Registro real de valores RK4 en `compareWithSim()` (`T5·P12`, `T5·P16`, `T6·P4`) y bounds dinámicos si `Vx < 0` en `T5·P12`.
+   - Encuadre y visibilidad de vectores 3D en `renderer3d.js` (`T6·P1`, `T6·P3`, `T6·P4`), leyenda adaptable en `charts.js` y etiquetas de rejilla/masas en `renderer2d.js`.
+4. Validación: `node mecanica-clasica/tests/physics.test.js` (20 PASSED, 0 FAILED), `node --check` sobre todos los módulos JS, y pruebas interactivas en Edge headless con WebGL sobre los 13 problemas sin errores de consola.
+================================================================================
