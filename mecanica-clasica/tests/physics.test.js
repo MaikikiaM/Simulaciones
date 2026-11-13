@@ -406,6 +406,54 @@ test('T6-P3 banner correcto cuando r0 < rf (extensión de brazos)', function () 
     assert(rs.banner.indexOf('Extendiendo') >= 0, 'Banner debe indicar extensión cuando r0 < rf: ' + rs.banner);
 });
 
+test('Auditoría general: bounds negativos T5-P3, coche dominante T5-P6, separación T6-P2, suelo T6-P8 y CM T6-P10', function () {
+    // T5-P3 negative forces
+    var p3 = Catalog.getById('t5_p3');
+    var par3 = Catalog.getDefaultParams(p3);
+    par3.F1x = -20; par3.F2y = -20;
+    var s3 = p3.createSimulation(par3);
+    runSteps(s3, 3.0, 0.02);
+    var rs3 = s3.getRenderState();
+    rs3.masses.forEach(function (m) {
+        assert(m.x >= rs3.bounds.minX && m.y >= rs3.bounds.minY, 'T5-P3 masas dentro de minX/minY con F < 0');
+    });
+
+    // T5-P6 car-dominated crash
+    var p6 = Catalog.getById('t5_p6');
+    var par6 = Catalog.getDefaultParams(p6);
+    par6.M = 2000; par6.vM_kmh = 10; par6.m = 5000; par6.vm_kmh = 200;
+    var s6 = p6.createSimulation(par6);
+    runSteps(s6, 8.0, 0.02);
+    var rs6 = s6.getRenderState();
+    assert(rs6.masses[0].y <= rs6.bounds.maxY, 'T5-P6 conjunto dentro de maxY cuando Py >> Px');
+
+    // T6-P2 steep angle perpendicular separation
+    var p2 = Catalog.getById('t6_p2');
+    var par2 = Catalog.getDefaultParams(p2);
+    par2.alphaDeg = 20; par2.R = 0.6;
+    var rs2 = p2.createSimulation(par2).getRenderState();
+    var w0 = rs2.wheels[0], w1 = rs2.wheels[1];
+    assert(Math.hypot(w1.x - w0.x, w1.y - w0.y) >= 2.5 * par2.R, 'T6-P2 cilindros no solapan en ángulo agudo');
+
+    // T6-P8 block rests flush on ground at finish
+    var p8 = Catalog.getById('t6_p8');
+    var s8 = p8.createSimulation(Catalog.getDefaultParams(p8));
+    runSteps(s8, 5.5, 0.01);
+    var rs8 = s8.getRenderState();
+    var boxBottom = rs8.boxes[0].y - 0.5 * rs8.boxes[0].h;
+    approx(boxBottom, 0.3, 1e-6, 'T6-P8 base del bloque al ras del suelo y=0.3');
+
+    // T6-P10 CM trail continuous from t=0 and V_CM = V/3 pre-collision
+    var p10 = Catalog.getById('t6_p10');
+    var par10 = Catalog.getDefaultParams(p10);
+    var s10 = p10.createSimulation(par10);
+    assert(s10.getObservables().extra[0].value.indexOf('1.000') >= 0, 'T6-P10 V_CM ya es V/3=1.000 antes del choque');
+    var cm0y = s10.getRenderState().trails[0].pts[0].y;
+    s10.step(0.05);
+    var cm1y = s10.getRenderState().trails[0].pts[1].y;
+    assert(cm1y > cm0y, 'T6-P10 trail CM sube monótonamente desde t=0');
+});
+
 console.log('\n=========================================');
 console.log('Resumen: ' + passed + ' PASSED, ' + failed + ' FAILED');
 console.log('=========================================');

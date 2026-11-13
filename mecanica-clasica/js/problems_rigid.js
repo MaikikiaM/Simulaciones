@@ -154,7 +154,7 @@
                     var Ec = Etras1 + Erot1 + Etras2 + Erot2;
                     return {
                         t: t, Ec: Ec, Etras: Etras1 + Etras2, Erot: Erot1 + Erot2, Ep: Ep, Etot: Ec + Ep,
-                        Px: 0, Py: 0, P: p.M * (y[1] + y[4]), Lz: (0.5 * p.M * p.R * p.R) * w1 + (p.M * p.R * p.R) * w2,
+                        Px: p.M * (y[1] + y[4]) * sinA, Py: -p.M * (y[1] + y[4]) * cosA, P: p.M * (y[1] + y[4]), Lz: (0.5 * p.M * p.R * p.R) * w1 + (p.M * p.R * p.R) * w2,
                         cm: { x: 0, y: 0 },
                         finished: done1 && done2,
                         extra: [
@@ -179,9 +179,8 @@
                     // Unit tangent down-slope: (sinA, -cosA), unit normal outward: (cosA, sinA)
                     var tx = sinA, ty = -cosA;
                     var nx = cosA, ny = sinA;
-                    var offset = p.R * 2.25; // separate visually perpendicular to ramp? Better: draw two stacked lanes!
-                    // Actually, drawing two parallel lanes shifted vertically by +offset for hollow cylinder makes race super clear!
-                    var laneGap = p.R * 2.6;
+                    // Shift upper lane vertically enough so perpendicular ramp separation >= 2.7*R even at steep alpha
+                    var laneGap = (2.7 * p.R) / Math.max(0.32, sinA);
 
                     var c1x = y[0] * tx + p.R * nx;
                     var c1y = p.h + y[0] * ty + p.R * ny;
@@ -356,7 +355,7 @@
                     // Map descent s in [0, sTarget] to schematic drop [0, 8.5] units below pulley at (0, 10)
                     var pulleyY = 10.0;
                     var visR = 1.35;
-                    var dropSpan = 8.2;
+                    var dropSpan = 7.65;
                     var blockY = pulleyY - 1.5 - (y[0] / p.sTarget) * dropSpan;
                     var ropeX = visR;
                     var w = y[1] / p.R;
@@ -507,7 +506,7 @@
                         { label: 'L (conservado)', unit: 'kg·m²/s', theo: ana.L, sim: Icur * w },
                         { label: 'ω final', unit: 'rad/s', theo: ana.wf, sim: pulled ? w : NaN },
                         { label: 'ω final (rev/s)', unit: 'rev/s', theo: ana.revF, sim: pulled ? w / (2 * Math.PI) : NaN },
-                        { label: 'E_c actual', unit: 'J', theo: pulled ? ana.Ecf : ana.Ec0, sim: 0.5 * Icur * w * w }
+                        { label: 'E_c final', unit: 'J', theo: ana.Ecf, sim: pulled ? 0.5 * Icur * w * w : NaN }
                     ];
                 },
                 getRenderState: function () {
@@ -949,7 +948,7 @@
             // State after collision: [Xcm, Ycm, Vxcm, Vycm, theta, omega]
             var y = [xCmLocal, 0, 0, p.V / 3, 0, p.V / p.L];
             var massY = -p.V * tColl;
-            var trails = { cm: [{ x: xCmLocal, y: 0 }], cir: [] };
+            var trails = { cm: [{ x: xCmLocal, y: massY / 3 }], cir: [] };
 
             function derivs(st) {
                 return [st[2], st[3], 0, 0, st[5], 0];
@@ -995,7 +994,7 @@
                         cm: { x: collided ? y[0] : xCmLocal, y: collided ? y[1] : massY / 3 },
                         finished: false,
                         extra: [
-                            { label: 'V_CM', value: collided ? fmt(y[3], 3) + ' m/s' : '0 (pre-choque)' },
+                            { label: 'V_CM', value: fmt(collided ? y[3] : p.V / 3, 3) + ' m/s' + (collided ? '' : ' (ya es V/3)') },
                             { label: 'ω barra', value: collided ? fmt(y[5], 3) + ' rad/s' : '0' },
                             { label: 'L_CM (constante)', value: fmt(Lcm, 3) + ' kg·m²/s' }
                         ]

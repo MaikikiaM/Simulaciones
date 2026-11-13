@@ -338,7 +338,7 @@
             this.objs.w2.position.x = -r;
             this.objs.armL.scale.set(1, Math.max(0.2, 2 * r), 1);
 
-            var wLen3 = Math.max(0.35, Math.min(0.95, renderState.omega * 0.085));
+            var wLen3 = Math.max(0.35, Math.min(1.25, 0.25 + renderState.omega * 0.045));
             var lLen3 = Math.max(0.4, Math.min(0.95, renderState.L * 0.012));
             this.objs.arrowOmega.setLength(wLen3, 0.18, 0.09);
             this.objs.arrowL.setLength(lLen3, 0.18, 0.09);

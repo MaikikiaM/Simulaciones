@@ -188,8 +188,12 @@
                     var F2u = p.F2y * uy;
                     var Tmag = mu * (L * y[5] * y[5] + F2u / p.m2 - F1u / p.m1);
 
+                    var minX = Math.min(-2, y[0] - 6, pos.x1 - 2, pos.x2 - 2);
+                    var maxX = Math.max(12, y[0] + 6, pos.x1 + 2, pos.x2 + 2);
+                    var minY = Math.min(-2, y[1] - 5, pos.y1 - 2, pos.y2 - 2);
+                    var maxY = Math.max(10, y[1] + 5, pos.y1 + 2, pos.y2 + 2);
                     return {
-                        bounds: { minX: -2, maxX: Math.max(12, y[0] + 6), minY: -2, maxY: Math.max(10, y[1] + 5) },
+                        bounds: { minX: minX, maxX: maxX, minY: minY, maxY: maxY },
                         trails: [
                             { pts: trails.m1, color: 'rgba(56, 189, 248, 0.45)', width: 1.5, dash: [4, 4] },
                             { pts: trails.m2, color: 'rgba(244, 114, 182, 0.45)', width: 1.5, dash: [4, 4] },
@@ -291,6 +295,7 @@
             var t = 0;
             var collisions = 0;
             var firstImpact = null;
+            var overTop = false;
             var trails = { b1: [], b2: [] };
             var ballVisR = 0.09 * Math.max(1, p.l * 0.7);
 
@@ -359,6 +364,7 @@
             return {
                 step: function (dt) {
                     subStepWithCollisions(dt);
+                    if (Math.cos(y[0]) < 0.25 || Math.cos(y[2]) < 0.25) overTop = true;
                     var pivotOffset = ballVisR;
                     var x1 = -pivotOffset + p.l * Math.sin(y[0]);
                     var y1 = p.l - p.l * Math.cos(y[0]);
@@ -374,17 +380,17 @@
                     var h1 = p.l * (1 - Math.cos(y[0])), h2 = p.l * (1 - Math.cos(y[2]));
                     var Ec = 0.5 * p.m1 * v1 * v1 + 0.5 * p.m2 * v2 * v2;
                     var Ep = p.m1 * p.g * h1 + p.m2 * p.g * h2;
-                    // Tangential momentum along swing
-                    var P = p.m1 * v1 + p.m2 * v2;
+                    var Px = p.m1 * v1 * Math.cos(y[0]) + p.m2 * v2 * Math.cos(y[2]);
+                    var Py = p.m1 * v1 * Math.sin(y[0]) + p.m2 * v2 * Math.sin(y[2]);
                     var Lz = p.l * (p.m1 * v1 + p.m2 * v2);
                     return {
                         t: t,
                         Ec: Ec,
                         Ep: Ep,
                         Etot: Ec + Ep,
-                        Px: p.m1 * v1 * Math.cos(y[0]) + p.m2 * v2 * Math.cos(y[2]),
-                        Py: p.m1 * v1 * Math.sin(y[0]) + p.m2 * v2 * Math.sin(y[2]),
-                        P: Math.abs(P),
+                        Px: Px,
+                        Py: Py,
+                        P: Math.hypot(Px, Py),
                         Lz: Lz,
                         cm: { x: 0, y: 0 },
                         finished: false,
@@ -399,7 +405,7 @@
                     var ana = t5_p9.solveAnalytical(p).values;
                     if (!firstImpact) {
                         return [
-                            { label: 'v₁ (pre-choque)', unit: 'm/s', theo: ana.v1, sim: p.l * y[1] },
+                            { label: 'v₁ al chocar', unit: 'm/s', theo: ana.v1, sim: NaN },
                             { label: 'v₁f (pendiente)', unit: 'm/s', theo: ana.v1f, sim: NaN },
                             { label: 'v₂f (pendiente)', unit: 'm/s', theo: ana.v2f, sim: NaN }
                         ];
@@ -425,9 +431,10 @@
                     var v1x = v1 * Math.cos(y[0]), v1y = v1 * Math.sin(y[0]);
                     var v2x = v2 * Math.cos(y[2]), v2y = v2 * Math.sin(y[2]);
                     var span = Math.max(1.8, p.l * 1.15);
+                    var maxY = overTop ? py + p.l + 0.45 : py + 0.35;
 
                     return {
-                        bounds: { minX: -span, maxX: span, minY: -0.2, maxY: py + 0.35 },
+                        bounds: { minX: -span, maxX: span, minY: -0.2, maxY: maxY },
                         trails: [
                             { pts: trails.b1.map(function (pt) { return { x: pt.x - (r1 - ballVisR), y: pt.y + 0.35 }; }), color: 'rgba(56, 189, 248, 0.35)', width: 1.5 },
                             { pts: trails.b2.map(function (pt) { return { x: pt.x + (r2 - ballVisR), y: pt.y + 0.35 }; }), color: 'rgba(251, 191, 36, 0.35)', width: 1.5 }
@@ -639,20 +646,23 @@
                     var ana = t5_p6.solveAnalytical(p).values;
                     var distSim = collided ? Math.hypot(combined[0], combined[1]) : NaN;
                     var Vsim = collided ? Math.hypot(combined[2], combined[3]) : NaN;
+                    var vTheoNow = !collided ? NaN : (stopped ? 0 : Math.max(0, ana.V - p.mu * p.g * (t - tApproach)));
                     return [
                         { label: 'V post-choque', unit: 'm/s', theo: ana.V, sim: simEcPost !== null ? Math.sqrt(2 * simEcPost / Mtot) : NaN },
                         { label: 'Distancia frenado', unit: 'm', theo: ana.dist, sim: stopped ? distSim : NaN },
                         { label: 'Pérdida E_c', unit: 'kJ', theo: ana.lossJ / 1000, sim: simEcPost !== null ? (ana.EcInit - simEcPost) / 1000 : NaN },
-                        { label: 'Velocidad actual', unit: 'm/s', theo: stopped ? 0 : Vsim, sim: Vsim }
+                        { label: 'Velocidad actual', unit: 'm/s', theo: vTheoNow, sim: Vsim }
                     ];
                 },
                 getRenderState: function () {
                     var ana = t5_p6.solveAnalytical(p).values;
-                    var maxDist = Math.max(40, ana.dist * 1.15);
+                    var angRad = degToRad(ana.thetaDeg);
+                    var maxDistX = Math.max(40, ana.dist * Math.cos(angRad) * 1.18 + 8);
+                    var maxDistY = Math.max(35, ana.dist * Math.sin(angRad) * 1.18 + 8);
                     var minCoord = -Math.max(40, Math.max(vM, vm) * tApproach * 1.1);
                     var roads = [
-                        { x1: minCoord, y1: 0, x2: maxDist, y2: 0, color: 'rgba(100,116,139,0.28)', width: 16 },
-                        { x1: 0, y1: minCoord, x2: 0, y2: maxDist * 0.65, color: 'rgba(100,116,139,0.28)', width: 16 }
+                        { x1: minCoord, y1: 0, x2: maxDistX, y2: 0, color: 'rgba(100,116,139,0.28)', width: 16 },
+                        { x1: 0, y1: minCoord, x2: 0, y2: maxDistY, color: 'rgba(100,116,139,0.28)', width: 16 }
                     ];
                     var masses = [];
                     var vectors = [];
@@ -677,7 +687,7 @@
                     }
 
                     return {
-                        bounds: { minX: minCoord, maxX: maxDist, minY: minCoord, maxY: Math.max(35, ana.dist * 0.45) },
+                        bounds: { minX: minCoord, maxX: maxDistX, minY: minCoord, maxY: maxDistY },
                         lines: roads,
                         trails: [
                             { pts: trails.truck, color: 'rgba(56, 189, 248, 0.5)', width: 2 },
@@ -855,10 +865,10 @@
 
                     if (collided && rem > 0) {
                         var yPost = rk4Integrate(y, t, rem, 0.005, derivsProj);
-                        // Check goal line crossing x === p.xGoal
+                        // Check goal line crossing x === p.xGoal before hitting ground
                         if (isNaN(simYAtGoal) && ((y[0] < p.xGoal && yPost[0] >= p.xGoal) || (y[0] > p.xGoal && yPost[0] <= p.xGoal))) {
                             var evG = bisectEvent(y, t, rem, derivsProj, function (st) { return st[0] - p.xGoal; }, 24);
-                            simYAtGoal = evG.yEvent[1];
+                            if (evG.yEvent[1] >= 0) simYAtGoal = evG.yEvent[1];
                         }
                         if (y[1] > 0 && yPost[1] <= 0) {
                             var evLand = bisectEvent(y, t, rem, derivsProj, function (st) { return st[1]; }, 24);
@@ -878,12 +888,15 @@
                     var Ec = 0.5 * mass * (y[2] * y[2] + y[3] * y[3]);
                     var Ep = mass * p.g * Math.max(0, y[1]);
                     var Px = mass * y[2], Py = mass * y[3];
+                    var cmx = y[0], cmy = y[1];
                     if (!collided) {
                         var sb = snowballPos(t);
                         Ec += 0.5 * p.mSnow * (sb.vx * sb.vx + sb.vy * sb.vy);
                         Ep += p.mSnow * p.g * Math.max(0, sb.y);
                         Px += p.mSnow * sb.vx;
                         Py += p.mSnow * sb.vy;
+                        cmx = (p.mBall * y[0] + p.mSnow * sb.x) / Mtot;
+                        cmy = (p.mBall * y[1] + p.mSnow * sb.y) / Mtot;
                     }
                     return {
                         t: t,
@@ -894,7 +907,7 @@
                         Py: Py,
                         P: Math.hypot(Px, Py),
                         Lz: 0,
-                        cm: { x: y[0], y: y[1] },
+                        cm: { x: cmx, y: cmy },
                         finished: landed,
                         extra: [
                             { label: 'Posición balón', value: '(' + fmt(y[0], 2) + ', ' + fmt(y[1], 2) + ') m' },
@@ -913,19 +926,21 @@
                 },
                 getRenderState: function () {
                     var ana = t5_p12.solveAnalytical(p).values;
-                    var minX = Math.min(-2, y[0] - 3);
-                    var maxX = Math.max(p.xGoal + 6, xApex + 14);
-                    var maxY = Math.max(yApex + 4, 13);
+                    var sbNow = !collided ? snowballPos(t) : null;
+                    var minX = Math.min(-2, y[0] - 3, sbNow ? sbNow.x - 2 : 0);
+                    var maxX = Math.max(p.xGoal + 6, xApex + 14, y[0] + 4, sbNow ? sbNow.x + 3 : 0);
+                    var maxY = Math.max(yApex + 4, 13, sbNow ? sbNow.y + 4 : 0);
                     var masses = [
                         { x: y[0], y: y[1], r: collided ? 0.45 : 0.38, color: collided ? '#fbbf24' : '#38bdf8', label: collided ? 'Balón+Nieve' : 'Balón' }
                     ];
                     var vectors = [
                         { type: 'velocity', x: y[0], y: y[1], vx: y[2] * 0.22, vy: y[3] * 0.22, color: '#22d3ee', label: 'v' }
                     ];
-                    if (!collided) {
-                        var sb = snowballPos(t);
-                        masses.push({ x: sb.x, y: sb.y, r: 0.28, color: '#e2e8f0', label: 'Bola nieve' });
-                        vectors.push({ type: 'velocity', x: sb.x, y: sb.y, vx: sb.vx * 0.22, vy: sb.vy * 0.22, color: '#f472b6', label: 'v_b' });
+                    var cmPt = { x: y[0], y: y[1], label: '' };
+                    if (sbNow) {
+                        masses.push({ x: sbNow.x, y: sbNow.y, r: 0.28, color: '#e2e8f0', label: 'Bola nieve' });
+                        vectors.push({ type: 'velocity', x: sbNow.x, y: sbNow.y, vx: sbNow.vx * 0.22, vy: sbNow.vy * 0.22, color: '#f472b6', label: 'v_b' });
+                        cmPt = { x: (p.mBall * y[0] + p.mSnow * sbNow.x) / Mtot, y: (p.mBall * y[1] + p.mSnow * sbNow.y) / Mtot, label: 'CM' };
                     }
                     return {
                         bounds: { minX: minX, maxX: maxX, minY: -1, maxY: maxY },
@@ -942,9 +957,9 @@
                             { pts: trails.ball, color: '#38bdf8', width: 3 }
                         ],
                         masses: masses,
-                        cm: { x: y[0], y: y[1], label: '' },
+                        cm: cmPt,
                         vectors: vectors,
-                        banner: isNaN(simYAtGoal) ? 'Trayectoria en curso hacia la portería (x = ' + p.xGoal + ' m)' : ana.verdict
+                        banner: (!isNaN(simYAtGoal) || landed) ? ana.verdict : 'Trayectoria en curso hacia la portería (x = ' + p.xGoal + ' m)'
                     };
                 }
             };
@@ -1377,7 +1392,7 @@
                     var v1x = -w * r1_cm * Math.sin(th), v1y = w * r1_cm * Math.cos(th);
                     var v2x = w * r2_cm * Math.sin(th), v2y = -w * r2_cm * Math.cos(th);
 
-                    var span = p.L * 0.95;
+                    var span = p.L * 1.08;
                     var masses = [
                         { x: x2, y: y2, r: 0.06 * p.L, color: '#38bdf8', label: 'M₂' }
                     ];

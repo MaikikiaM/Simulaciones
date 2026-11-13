@@ -12,13 +12,13 @@ Proyectos de computación científica, simulación cuántica, cálculo numérico
   - `js/rk4.js`: Integrador RK4 y localización exacta de eventos por bisección.
   - `js/problems_particles.js`, `js/problems_rigid.js`, `js/problems_catalog.js`: Modelos analíticos, EDOs RK4 y guías pedagógicas desde 0.
   - `js/renderer2d.js`, `js/renderer3d.js`, `js/charts.js`: Renderizado 2D/3D en tiempo real y gráficas de conservación ($E_c, E_p, E_{\text{tot}}, |\vec{P}|, L_z$).
-  - `tests/physics.test.js`: Suite de verificación numérica en Node.js (20 tests).
+  - `tests/physics.test.js`: Suite de verificación numérica en Node.js (21 tests).
 - `atomo-cuantico/`: Simulación matemática exacta de orbitales hidrogenoides ($\psi_{nlm}(r, \theta, \phi)$).
   - `quantum_core.py`, `render_atomo_4k.py`, `visor_atomo_3d.html`, `lib/`, `outputs/`.
 - `registro.txt`: Bitácora continua del proyecto.
 
 ## 3. Estado de Compilación
-- `mecanica-clasica/tests/physics.test.js`: **20 PASSED, 0 FAILED** con Node.js.
+- `mecanica-clasica/tests/physics.test.js`: **21 PASSED, 0 FAILED** con Node.js.
 - `mecanica-clasica/index.html`: Verificado en Microsoft Edge (`file://` + WebGL) sin errores de consola.
 - `atomo-cuantico/quantum_core.py` probado con numpy y scipy; `visor_atomo_3d.html` operativo.
 

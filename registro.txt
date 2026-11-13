@@ -30,3 +30,28 @@ SESIÓN: 13/11/2026 - LABORATORIO INTERACTIVO DE MECÁNICA CLÁSICA (T5 Y T6)
    - Encuadre y visibilidad de vectores 3D en `renderer3d.js` (`T6·P1`, `T6·P3`, `T6·P4`), leyenda adaptable en `charts.js` y etiquetas de rejilla/masas en `renderer2d.js`.
 4. Validación: `node mecanica-clasica/tests/physics.test.js` (20 PASSED, 0 FAILED), `node --check` sobre todos los módulos JS, y pruebas interactivas en Edge headless con WebGL sobre los 13 problemas sin errores de consola.
 ================================================================================
+
+
+================================================================================
+SESIÓN: 13/11/2026 - AUDITORÍA EXHAUSTIVA DE LAS 13 SIMULACIONES (T5 Y T6)
+================================================================================
+
+**Prompts del usuario:**
+- "Es imposible que hayas hecho tantas simulaciones sin ningun fallo. Haz una revision de todas y corrige los errores"
+
+**Errores detectados y corregidos:**
+1. `T5·P3`: Expansión dinámica de `bounds` (`minX/minY/maxX/maxY`) cuando `F1x < 0` o `F2y < 0`.
+2. `T5·P9`: Expansión dinámica de `maxY` si una bola da la vuelta completa; `P` coherente con `Math.hypot(Px, Py)`; `compareWithSim()` muestra `En curso...` (`NaN`) antes del primer choque en lugar de un falso error inicial del 100%.
+3. `T5·P6`: `bounds` proporcional a `ana.thetaDeg` (evita recorte vertical cuando `m·v_coche >> M·v_camión`) y fila `Velocidad actual` comparada contra el frenado analítico `V - μg(t - t_choque)`.
+4. `T5·P12`: CM pre-choque real de las 2 partículas en `getObservables()` y `getRenderState()`; protección `y >= 0` al registrar `y` en portería; banner actualizado al aterrizar sin alcanzar portería; `maxX/maxY` adaptados a la bola de nieve en extremos.
+5. `T5·P15`: Margen `span = 1.08 * L` para que `M₂` (órbita `5L/6`) y su etiqueta no rocen el borde.
+6. `T6·P2`: Separación vertical `laneGap = (2.7 * R) / max(0.32, sin α)` evitando solapamiento visual en ángulos agudos (`α = 20°`) y cálculo real de `Px, Py`.
+7. `T6·P8`: Ajuste de `dropSpan = 7.65` para que la base del bloque descanse al ras de la línea del suelo (`y = 0.30`).
+8. `T6·P3`: `compareWithSim()` compara `E_c final` al completar la retracción (elimina falso aviso de error durante el tramo intermedio) y escala de flecha `ω` ajustada en `renderer3d.js`.
+9. `T6·P10`: Inicio continuo del rastro del CM en `y = -V·t_choque/3` (sin salto en t=0) y telemetría pre-choque fiel (`V_CM = V/3`).
+
+**Validación:**
+- `node mecanica-clasica/tests/physics.test.js`: **21 PASSED, 0 FAILED**.
+- Auditoría sistemática de `bounds` y errores en los 13 problemas (valores por defecto, mínimos y máximos): **13/13 OK**.
+- Edge headless con WebGL sobre los 13 problemas avanzados y pestaña `Solución vs RK4`: `errors: []`, `warns: []`.
+================================================================================
