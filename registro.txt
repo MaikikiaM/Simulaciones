@@ -15,8 +15,12 @@ SESIÓN: 08/11/2026 - INICIALIZACIÓN DEL PROYECTO SIMULACIONES
 SESIÓN: 13/11/2026 - LABORATORIO INTERACTIVO DE MECÁNICA CLÁSICA (T5 Y T6)
 ================================================================================
 
-**Prompts del usuario:**
-- "Adelante /goal /boost Dedicale mucho tiempo y atencion" (sobre las hojas `Problemas T5.pdf` y `Hoja_problemas_team6.pdf`)
+- Prompts literales del usuario:
+  * [13/11/2026 22:44]: "Quiero hacer una simulacion de unos ejercicios de sistemas de particulas y otros de solido rigido. Que opinas"
+  * [13/11/2026 22:48]: "Te he dejado los problemas dentro del proyecto. Selecciona los que mejor se adecúen a una simulacion y a aprender desde 0 sobre estos dos temas"
+  * [13/11/2026 22:58]: "Adelante /goal /boost 
+Dedicale mucho tiempo y atencion"
+- Objetivo: Seleccionar e implementar simulaciones interactivas de problemas de `Problemas T5.pdf` y `Hoja_problemas_team6.pdf` para aprender desde cero.
 
 **Acciones aplicadas:**
 1. Creación de `mecanica-clasica/` con aplicación web autónoma compatible con `file://` (`index.html`, `css/styles.css`, `js/rk4.js`, `js/problems_particles.js`, `js/problems_rigid.js`, `js/problems_catalog.js`, `js/renderer2d.js`, `js/renderer3d.js`, `js/charts.js`, `js/app.js`, `lib/{three.min.js, OrbitControls.js}`).
@@ -36,8 +40,8 @@ SESIÓN: 13/11/2026 - LABORATORIO INTERACTIVO DE MECÁNICA CLÁSICA (T5 Y T6)
 SESIÓN: 13/11/2026 - AUDITORÍA EXHAUSTIVA DE LAS 13 SIMULACIONES (T5 Y T6)
 ================================================================================
 
-**Prompts del usuario:**
-- "Es imposible que hayas hecho tantas simulaciones sin ningun fallo. Haz una revision de todas y corrige los errores"
+- Prompts literales del usuario:
+  * [13/11/2026 23:38]: "Es imposible que hayas hecho tantas simulaciones sin ningun fallo. Haz una revision de todas y corrige los errores"
 
 **Errores detectados y corregidos:**
 1. `T5·P3`: Expansión dinámica de `bounds` (`minX/minY/maxX/maxY`) cuando `F1x < 0` o `F2y < 0`.
@@ -54,4 +58,16 @@ SESIÓN: 13/11/2026 - AUDITORÍA EXHAUSTIVA DE LAS 13 SIMULACIONES (T5 Y T6)
 - `node mecanica-clasica/tests/physics.test.js`: **21 PASSED, 0 FAILED**.
 - Auditoría sistemática de `bounds` y errores en los 13 problemas (valores por defecto, mínimos y máximos): **13/13 OK**.
 - Edge headless con WebGL sobre los 13 problemas avanzados y pestaña `Solución vs RK4`: `errors: []`, `warns: []`.
+================================================================================
+
+================================================================================
+SESIÓN: 15/11/2026 - NORMALIZACIÓN DE REGLAS Y REGISTRO LITERAL DE PROMPTS
+================================================================================
+- Prompts literales del usuario:
+  * [15/11/2026 00:38]: "Cometiste un error al hacer todo el tema de la reorganización, sobre todo con el registro de las cosas. Lo que están haciendo en los diferentes proyectos, que ya lo he corregido en algún proyecto como es Apps, simplemente lo que hacen es el objetivo del prompt lo resumen, el que digo yo, y lo ponen como un objetivo y entonces dicen lo que han hecho. Yo quiero que literalmente pongan se ponga lo que yo he dicho. Y si eso después que resuman el objetivo, resuman lo que he dicho, pero debe aparecer lo que he dicho yo tal cual. Y no entiendo que estén ahora haciéndolo mal cuando, por ejemplo, justamente en Apps, SpotiLocal lo registraba correctamente. Y, por ejemplo, Minecraft, aunque no he vuelto to a trabajar en ello, el proyecto de Minecraft del servidor también lo registraba tal cual, que yo sepa. Entonces, mira a ver qué pasa y actualiza todos los proyectos. Obviamente no te cargues nada."
+- Objetivo: Dotar a `Simulaciones` de `AGENTS.md` raíz exigiendo prompts literales palabra por palabra y completar la trazabilidad horaria exacta en las sesiones del 13/11/2026.
+
+**Cambios aplicados:**
+- `Simulaciones/AGENTS.md`: creado protocolo operativo local reforzando `- Prompts literales del usuario:` obligatorio antes de `- Objetivo:`, compatibilidad offline `file://` y validación numérica/WebGL.
+- `Simulaciones/registro.txt`: completados los prompts preparatorios del 13/11/2026 (22:44 y 22:48) y marcas horarias exactas desde `33e2988c`, conservando todos los detalles técnicos y de validación.
 ================================================================================
