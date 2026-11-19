@@ -1205,5 +1205,1022 @@
         }
     };
 
-    return [t6_p2, t6_p8, t6_p3, t6_p4, t6_p11, t6_p10, t6_p1];
+    // =========================================================================
+    // T6 · P5: Hombre Caminando sobre Tronco Flotante
+    // =========================================================================
+    var t6_p5 = {
+        id: 't6_p5',
+        topic: 'rigid',
+        level: 3,
+        code: 'T6 · P5',
+        title: 'Hombre Caminando sobre Tronco Flotante',
+        subtitle: 'Conservación del CM en ausencia de fuerzas horizontales externas',
+        renderMode: '2d',
+        learningGoal: 'Comprender que al caminar hacia la orilla sin rozamiento con el agua, el tronco retrocede de modo que el CM del sistema hombre + tronco permanece inmóvil.',
+        guideFromZero: [
+            '<strong>1. Posición inicial:</strong> El tronco de L = 20 m toca la orilla en <code>x = 0</code> (CM tronco en 10 m) y el hombre está en <code>x = 20 m</code> → <code>x_CM = (800·10 + 80·20)/880 = 10.909 m</code>.',
+            '<strong>2. En el punto medio del tronco:</strong> El hombre coincide con el CM del tronco, luego ambos están en <code>x_CM = 10.909 m</code> (el tronco se alejó 0.909 m de la orilla).',
+            '<strong>3. Al llegar al otro extremo del tronco:</strong> El hombre está a distancia <code>x_ext</code> de la orilla y el tronco en <code>x_ext + 10</code> → <code>x_ext = 1.818 m</code>.'
+        ],
+        statement: 'Un hombre de 80 kg está en el extremo exterior de un tronco de 20 m y 800 kg que flota perpendicularmente tocando la orilla. Camina hasta el otro extremo sin rozamiento del agua. Indicar la posición del hombre, del tronco y del CM: (a) al inicio, (b) en el punto medio, (c) en el otro extremo (¿distancia a la orilla?).',
+        paramsSchema: [
+            { key: 'mMan', label: 'Masa hombre m', unit: 'kg', min: 40, max: 140, step: 5, def: 80 },
+            { key: 'Mlog', label: 'Masa tronco M', unit: 'kg', min: 200, max: 1600, step: 50, def: 800 },
+            { key: 'L', label: 'Longitud tronco L', unit: 'm', min: 8, max: 30, step: 1, def: 20 },
+            { key: 'walkTime', label: 'Duración caminata', unit: 's', min: 2, max: 10, step: 0.5, def: 5 }
+        ],
+        defaultDuration: 5.5,
+
+        solveAnalytical: function (p) {
+            var Mtot = p.mMan + p.Mlog;
+            var xcm = (p.Mlog * 0.5 * p.L + p.mMan * p.L) / Mtot;
+            var xMidMan = xcm;
+            var xEndMan = xcm - (p.Mlog * 0.5 * p.L) / Mtot;
+            var xEndLogCenter = xEndMan + 0.5 * p.L;
+            return {
+                steps: [
+                    {
+                        title: '(a) Posición inicial del CM (inmutable)',
+                        formula: 'x_CM = (M·L/2 + m·L) / (M + m)',
+                        detail: 'x_CM = ' + fmt(xcm, 3) + ' m desde la orilla'
+                    },
+                    {
+                        title: '(b) Cuando el hombre está en el punto medio del tronco',
+                        formula: 'x_hombre = x_centro_tronco = x_CM',
+                        detail: 'Ambos en x = ' + fmt(xMidMan, 3) + ' m (la punta del tronco se separó ' + fmt(xMidMan - 0.5 * p.L, 3) + ' m de la orilla)'
+                    },
+                    {
+                        title: '(c) Cuando el hombre llega al extremo cercano',
+                        formula: 'm·x_h + M·(x_h + L/2) = (m + M)·x_CM',
+                        detail: 'Distancia del hombre a la orilla: x_h = ' + fmt(xEndMan, 3) + ' m  (centro del tronco en ' + fmt(xEndLogCenter, 3) + ' m)'
+                    }
+                ],
+                values: { Mtot: Mtot, xcm: xcm, xMidMan: xMidMan, xEndMan: xEndMan, xEndLogCenter: xEndLogCenter }
+            };
+        },
+
+        createSimulation: function (p) {
+            var ana = t6_p5.solveAnalytical(p).values;
+            var y = [0]; // [progress u in 0..1]
+            var t = 0;
+
+            function derivs() { return [t < p.walkTime ? 1 / p.walkTime : 0]; }
+
+            function stateAtU(u) {
+                // Relative coordinate s on log from near-end: L -> 0
+                var sRel = p.L * (1 - u);
+                // M*(xNear + L/2) + m*(xNear + sRel) = Mtot * xcm -> xNear = xcm - (M*L/2 + m*sRel)/Mtot
+                var xNear = ana.xcm - (p.Mlog * 0.5 * p.L + p.mMan * sRel) / ana.Mtot;
+                return { xNear: xNear, xLogCenter: xNear + 0.5 * p.L, xMan: xNear + sRel };
+            }
+
+            return {
+                step: function (dt) {
+                    if (t >= p.walkTime) return;
+                    y = rk4Integrate(y, t, Math.min(dt, p.walkTime - t), 0.01, derivs);
+                    t = Math.min(p.walkTime, t + dt);
+                    if (y[0] > 1) y[0] = 1;
+                },
+                getObservables: function () {
+                    var st = stateAtU(y[0]);
+                    var vRel = t < p.walkTime ? -p.L / p.walkTime : 0;
+                    var vLog = -(p.mMan / ana.Mtot) * vRel;
+                    var vMan = vLog + vRel;
+                    var Ec = 0.5 * p.mMan * vMan * vMan + 0.5 * p.Mlog * vLog * vLog;
+                    return {
+                        t: t, Ec: Ec, Ep: 0, Etot: Ec,
+                        Px: p.mMan * vMan + p.Mlog * vLog, Py: 0, P: Math.abs(p.mMan * vMan + p.Mlog * vLog), Lz: 0,
+                        cm: { x: ana.xcm, y: 0 },
+                        finished: t >= p.walkTime,
+                        extra: [
+                            { label: 'x_hombre (orilla)', value: fmt(st.xMan, 3) + ' m' },
+                            { label: 'Punta tronco', value: fmt(st.xNear, 3) + ' m' },
+                            { label: 'x_CM (inmóvil)', value: fmt(ana.xcm, 3) + ' m' }
+                        ]
+                    };
+                },
+                compareWithSim: function () {
+                    var st = stateAtU(y[0]);
+                    var done = t >= p.walkTime - 1e-6;
+                    var curCm = (p.mMan * st.xMan + p.Mlog * st.xLogCenter) / ana.Mtot;
+                    return [
+                        { label: 'x_CM invariante', unit: 'm', theo: ana.xcm, sim: curCm },
+                        { label: 'Distancia final orilla', unit: 'm', theo: ana.xEndMan, sim: done ? st.xMan : NaN }
+                    ];
+                },
+                getRenderState: function () {
+                    var st = stateAtU(y[0]);
+                    return {
+                        bounds: { minX: -2.5, maxX: p.L + 3.5, minY: -3.5, maxY: 4.5 },
+                        polys: [
+                            // Shore on left, water on right
+                            { pts: [{ x: -2.5, y: -3.5 }, { x: 0, y: -3.5 }, { x: 0, y: 4.5 }, { x: -2.5, y: 4.5 }], fill: 'rgba(120, 113, 108, 0.35)', stroke: '#78716c', lineWidth: 2 },
+                            { pts: [{ x: 0, y: -3.5 }, { x: p.L + 3.5, y: -3.5 }, { x: p.L + 3.5, y: 0 }, { x: 0, y: 0 }], fill: 'rgba(14, 165, 233, 0.16)' }
+                        ],
+                        boxes: [
+                            { x: st.xLogCenter, y: 0.15, w: p.L, h: 0.7, color: '#92400e', stroke: '#d97706', label: 'Tronco (' + p.Mlog + ' kg)' }
+                        ],
+                        masses: [
+                            { x: st.xMan, y: 0.95, r: 0.45, color: '#38bdf8', label: 'Hombre (' + p.mMan + ' kg)' }
+                        ],
+                        lines: [
+                            { x1: ana.xcm, y1: -1.5, x2: ana.xcm, y2: 2.5, color: 'rgba(251,191,36,0.4)', width: 1.5, dash: [4, 4] }
+                        ],
+                        cm: { x: ana.xcm, y: 0.15, label: 'CM fijo (' + fmt(ana.xcm, 2) + ' m)' },
+                        labels: [
+                            { x: -1.2, y: 2.8, text: 'Orilla (x=0)', color: '#cbd5e1', align: 'center' }
+                        ],
+                        banner: t >= p.walkTime
+                            ? 'Hombre en el extremo: queda a ' + fmt(st.xMan, 3) + ' m de la orilla (tronco retrocedió)'
+                            : 'Caminando hacia la orilla: el tronco retrocede manteniendo el CM quieto en ' + fmt(ana.xcm, 2) + ' m'
+                    };
+                }
+            };
+        }
+    };
+
+    // =========================================================================
+    // T6 · P6: Rueda ante un Escalón (Equilibrio de Pares y Vuelco)
+    // =========================================================================
+    var t6_p6 = {
+        id: 't6_p6',
+        topic: 'rigid',
+        level: 4,
+        code: 'T6 · P6',
+        title: 'Rueda ante un Escalón (Equilibrio y Vuelco)',
+        subtitle: 'Momentos respecto al borde B y fuerza mínima horizontal F_mín',
+        renderMode: '2d',
+        learningGoal: 'Elegir el punto de pivote adecuado (el borde B del escalón, donde actúan las reacciones desconocidas) para calcular la fuerza mínima que inicia el ascenso.',
+        guideFromZero: [
+            '<strong>1. En el instante de despegar del suelo (N_A = 0):</strong> Solo actúan el peso <code>mg</code>, la fuerza <code>F</code> en el centro O y la reacción en la esquina B.',
+            '<strong>2. Brazos de palanca respecto a B:</strong> Brazo de F: <code>y = r − h</code>. Brazo del peso: <code>x = √[r² − (r − h)²]</code>.',
+            '<strong>3. Equilibrio de momentos:</strong> <code>F(r − h) = mg √(2rh − h²)</code>. Si aplicas <code>F > F_mín</code>, la rueda pivota sobre B y sube el escalón.'
+        ],
+        statement: 'Una rueda de masa m = 1 kg y radio r = 30 cm está apoyada contra un escalón de altura h = 10 cm. Calcular la fuerza horizontal F aplicada en su centro necesaria para mantenerla en equilibrio al borde de subir (N_A = 0).',
+        paramsSchema: [
+            { key: 'm', label: 'Masa de la rueda m', unit: 'kg', min: 0.5, max: 10, step: 0.5, def: 1.0 },
+            { key: 'r_cm', label: 'Radio r', unit: 'cm', min: 15, max: 60, step: 1, def: 30 },
+            { key: 'h_cm', label: 'Altura escalón h', unit: 'cm', min: 2, max: 25, step: 1, def: 10 },
+            { key: 'F_ratio', label: 'Fuerza aplicada F / F_mín', unit: '', min: 0.5, max: 1.5, step: 0.05, def: 1.0 },
+            { key: 'g', label: 'Gravedad g', unit: 'm/s²', min: 1, max: 20, step: 0.1, def: 9.8 }
+        ],
+        quickActions: [
+            { label: 'Equilibrio crítico (F = F_mín)', apply: function (p) { p.F_ratio = 1.0; } },
+            { label: 'Supera y sube (F = 1.25 F_mín)', apply: function (p) { p.F_ratio = 1.25; } }
+        ],
+        defaultDuration: 3.5,
+
+        solveAnalytical: function (p) {
+            var r = p.r_cm / 100, h = Math.min(r * 0.9, p.h_cm / 100);
+            var dy = r - h;
+            var dx = Math.sqrt(Math.max(1e-6, r * r - dy * dy));
+            var Fmin = (p.m * p.g * dx) / dy;
+            var F = p.F_ratio * Fmin;
+            return {
+                steps: [
+                    {
+                        title: '1. Geometría respecto a la esquina B',
+                        formula: 'd_vertical = r − h  ;  d_horiz = √[r² − (r − h)²]',
+                        detail: 'd_vert = ' + fmt(dy, 3) + ' m  ;  d_horiz = ' + fmt(dx, 3) + ' m'
+                    },
+                    {
+                        title: '2. Fuerza mínima de equilibrio (N_A = 0)',
+                        formula: 'F_mín · (r − h) = m g · d_horiz',
+                        detail: 'F_mín = ' + fmt(Fmin, 3) + ' N  (aplicada actualmente: F = ' + fmt(F, 3) + ' N)'
+                    }
+                ],
+                values: { r: r, h: h, dy: dy, dx: dx, Fmin: Fmin, F: F }
+            };
+        },
+
+        createSimulation: function (p) {
+            var ana = t6_p6.solveAnalytical(p).values;
+            var phi0 = Math.atan2(ana.dx, ana.dy); // angle of BO from vertical
+            var I_B = 1.5 * p.m * ana.r * ana.r; // solid disc about rim B
+            var y = [phi0, 0]; // [psi from vertical (0 = on top of corner B), omega]
+            var t = 0;
+            var climbed = false;
+
+            function derivs(st) {
+                var psi = st[0];
+                // Torque about B (CCW = decreasing psi): F*r*cos(psi) - mg*r*sin(psi)
+                if (psi <= 0) return [0, 0];
+                var tauClimb = ana.F * ana.r * Math.cos(psi) - p.m * p.g * ana.r * Math.sin(psi);
+                if (psi >= phi0 && tauClimb <= 0) return [0, 0]; // supported by floor A
+                return [st[1], -tauClimb / I_B];
+            }
+
+            return {
+                step: function (dt) {
+                    if (climbed) return;
+                    y = rk4Integrate(y, t, dt, 0.004, derivs);
+                    t += dt;
+                    if (y[0] >= phi0) { y[0] = phi0; y[1] = 0; }
+                    if (y[0] <= 0) { y[0] = 0; y[1] = 0; climbed = true; }
+                },
+                getObservables: function () {
+                    var cx = -ana.r * Math.sin(y[0]), cy = ana.h + ana.r * Math.cos(y[0]);
+                    var Ec = 0.5 * I_B * y[1] * y[1];
+                    var Ep = p.m * p.g * (cy - ana.r);
+                    return {
+                        t: t, Ec: Ec, Ep: Ep, Etot: Ec + Ep,
+                        Px: 0, Py: 0, P: Math.abs(p.m * ana.r * y[1]), Lz: I_B * y[1],
+                        cm: { x: cx, y: cy },
+                        finished: climbed,
+                        extra: [
+                            { label: 'F aplicada / F_mín', value: fmt(ana.F, 2) + ' / ' + fmt(ana.Fmin, 2) + ' N' },
+                            { label: 'Ángulo BO', value: fmt(radToDeg(y[0]), 1) + '°' },
+                            { label: 'Estado', value: climbed ? '¡Subió el escalón!' : (p.F_ratio > 1.001 ? 'Pivotando sobre B' : (p.F_ratio < 0.999 ? 'Apoyada en A' : 'Equilibrio crítico')) }
+                        ]
+                    };
+                },
+                compareWithSim: function () {
+                    return [
+                        { label: 'F_mín equilibrio', unit: 'N', theo: ana.Fmin, sim: ana.F },
+                        { label: 'Altura centro O', unit: 'm', theo: ana.r, sim: ana.h + ana.r * Math.cos(y[0]) }
+                    ];
+                },
+                getRenderState: function () {
+                    var cx = -ana.r * Math.sin(y[0]), cy = ana.h + ana.r * Math.cos(y[0]);
+                    var fScale = 0.02;
+                    return {
+                        bounds: { minX: -ana.r * 2.5, maxX: ana.r * 2.5, minY: -0.15, maxY: ana.h + ana.r * 2.5 },
+                        polys: [
+                            { pts: [{ x: 0, y: 0 }, { x: ana.r * 2.5, y: 0 }, { x: ana.r * 2.5, y: ana.h }, { x: 0, y: ana.h }], fill: 'rgba(71, 85, 105, 0.5)', stroke: '#94a3b8', lineWidth: 2 }
+                        ],
+                        lines: [
+                            { x1: -ana.r * 2.5, y1: 0, x2: 0, y2: 0, color: '#475569', width: 3 },
+                            { x1: 0, y1: ana.h, x2: cx, y2: cy, color: 'rgba(251,191,36,0.55)', width: 2, dash: [4, 4] }
+                        ],
+                        wheels: [
+                            { x: cx, y: cy, r: ana.r, phi: phi0 - y[0], hollow: false, color: '#38bdf8', label: 'Rueda (m=' + p.m + 'kg)' }
+                        ],
+                        labels: [
+                            { x: 0.04, y: ana.h * 0.45, text: 'B (h=' + p.h_cm + 'cm)', color: '#fbbf24' },
+                            { x: cx, y: 0.03, text: 'A', color: '#94a3b8', align: 'center' }
+                        ],
+                        vectors: [
+                            { type: 'force', x: cx, y: cy, vx: ana.F * fScale, vy: 0, color: '#4ade80', label: 'F=' + fmt(ana.F, 1) + 'N' },
+                            { type: 'force', x: cx, y: cy, vx: 0, vy: -p.m * p.g * fScale, color: '#fb7185', label: 'mg' }
+                        ],
+                        banner: climbed
+                            ? '¡Escalón superado! La rueda pivotó sobre B'
+                            : (p.F_ratio > 1.001 ? 'F > F_mín: momento de F vence a mg → subiendo' : 'F_mín equilibrio = ' + fmt(ana.Fmin, 3) + ' N')
+                    };
+                }
+            };
+        }
+    };
+
+    // =========================================================================
+    // T6 · P14: Escalera Apoyada con Rozamiento en Pared y Suelo
+    // =========================================================================
+    var t6_p14 = {
+        id: 't6_p14',
+        topic: 'rigid',
+        level: 5,
+        code: 'T6 · P14',
+        title: 'Escalera Apoyada con Rozamiento Límite',
+        subtitle: 'Equilibrio estático de fuerzas y pares vs deslizamiento por pared y suelo',
+        renderMode: '2d',
+        learningGoal: 'Comprobar que el ángulo crítico de una escalera depende SOLO del coeficiente de rozamiento (tan θ = 2μ/(1−μ²)), siendo independiente de su masa m y longitud L.',
+        guideFromZero: [
+            '<strong>1. Equilibrio de fuerzas:</strong> <code>N_suelo + f_pared = mg</code> y <code>N_pared = f_suelo</code>.',
+            '<strong>2. Equilibrio límite (ambos rozamientos máximos μ):</strong> <code>tan θ = 2μ / (1 − μ²)</code> → es la fórmula de ángulo doble <code>θ = 2 atan(μ)</code>.',
+            '<strong>3. Para θ = 45°:</strong> <code>μ² + 2μ − 1 = 0 → μ = √2 − 1 ≈ 0.4142</code>, ¡exactamente igual para 12 kg / 2 m que para 50 kg / 1 m!'
+        ],
+        statement: 'Una escalera de m = 12 kg y L = 2 m está apoyada formando θ = 45° con la vertical, con igual coeficiente de rozamiento μ en pared y suelo. Si se aumenta θ mínimamente cae. (a) Valor de μ. (b) ¿Cambia si m = 50 kg y L = 1 m?',
+        paramsSchema: [
+            { key: 'm', label: 'Masa escalera m', unit: 'kg', min: 5, max: 60, step: 1, def: 12 },
+            { key: 'L', label: 'Longitud L', unit: 'm', min: 1.0, max: 4.0, step: 0.2, def: 2.0 },
+            { key: 'theta0Deg', label: 'Ángulo con vertical θ', unit: '°', min: 15, max: 70, step: 1, def: 45 },
+            { key: 'mu', label: 'Coef. rozamiento μ', unit: '', min: 0.15, max: 0.80, step: 0.01, def: 0.42 },
+            { key: 'g', label: 'Gravedad g', unit: 'm/s²', min: 1, max: 20, step: 0.1, def: 9.8 }
+        ],
+        quickActions: [
+            { label: 'Límite 45° (μ=0.42 aguanta)', apply: function (p) { p.theta0Deg = 45; p.mu = 0.42; } },
+            { label: 'Cae por superar θ_crít (μ=0.35)', apply: function (p) { p.theta0Deg = 45; p.mu = 0.35; } },
+            { label: 'Caso (b): 50 kg, 1 m', apply: function (p) { p.m = 50; p.L = 1.0; p.theta0Deg = 45; p.mu = 0.42; } }
+        ],
+        defaultDuration: 3.0,
+
+        solveAnalytical: function (p) {
+            var th = degToRad(p.theta0Deg);
+            var muCrit = (Math.sqrt(1 + Math.tan(th) * Math.tan(th)) - 1) / Math.max(1e-6, Math.tan(th));
+            var thetaCritDeg = radToDeg(2 * Math.atan(p.mu));
+            var holds = p.mu >= muCrit - 1e-4;
+            return {
+                steps: [
+                    {
+                        title: '(a) Coeficiente mínimo para θ = ' + p.theta0Deg + '°',
+                        formula: 'tan θ = 2μ / (1 − μ²)  →  μ_mín = tan(θ / 2)',
+                        detail: 'μ_mín = tan(' + fmt(p.theta0Deg * 0.5, 1) + '°) = ' + fmt(muCrit, 4) + '  (para 45°: √2 − 1 = 0.4142)'
+                    },
+                    {
+                        title: '2. Ángulo máximo soportado con μ = ' + fmt(p.mu, 2),
+                        formula: 'θ_máx = 2 atan(μ)',
+                        detail: 'θ_máx = ' + fmt(thetaCritDeg, 2) + '° → ' + (holds ? 'EQUILIBRIO ESTÁTICO' : '¡DESLIZA Y CAE!')
+                    },
+                    {
+                        title: '(b) Independencia de la masa m y longitud L',
+                        formula: 'm y L se cancelan en ΣF = 0 y Στ = 0',
+                        detail: 'Con m = ' + p.m + ' kg y L = ' + p.L + ' m el valor crítico sigue siendo exactamente μ = ' + fmt(muCrit, 4)
+                    }
+                ],
+                values: { muCrit: muCrit, thetaCritDeg: thetaCritDeg, holds: holds }
+            };
+        },
+
+        createSimulation: function (p) {
+            var ana = t6_p14.solveAnalytical(p).values;
+            var r = 0.5 * p.L;
+            var th0 = degToRad(p.theta0Deg);
+            var y = [th0, 0]; // [theta, omega]
+            var t = 0;
+            var fallen = false;
+
+            function solveDynamics(th, w) {
+                if (ana.holds && Math.abs(th - th0) < 1e-6 && w === 0) {
+                    var NsEq = (p.m * p.g) / (1 + p.mu * p.mu);
+                    var NpEq = p.mu * NsEq;
+                    return { alpha: 0, Ns: NsEq, Np: NpEq, fs: NpEq, fp: p.mu * NpEq };
+                }
+                var s = Math.sin(th), c = Math.cos(th);
+                var mu = p.mu;
+                // Linear relation: Ns = A0 + A1*alpha, Np = B0 + B1*alpha
+                var denom1 = 1 + mu * mu;
+                var A0 = (p.m * p.g - p.m * r * w * w * (c - mu * s)) / denom1;
+                var A1 = -(p.m * r * (s + mu * c)) / denom1;
+                var B0 = mu * A0 - p.m * r * s * w * w;
+                var B1 = mu * A1 + p.m * r * c;
+                // 1/3 m r^2 alpha = r [ (-s + mu c) Ns + (c + mu s) Np ]
+                var cS = -s + mu * c, cP = c + mu * s;
+                var lhsCoef = (1 / 3) * p.m * r - (cS * A1 + cP * B1);
+                var rhs = cS * A0 + cP * B0;
+                var alpha = Math.max(0, rhs / Math.max(1e-6, lhsCoef));
+                var Ns = Math.max(0, A0 + A1 * alpha);
+                var Np = Math.max(0, B0 + B1 * alpha);
+                return { alpha: alpha, Ns: Ns, Np: Np, fs: mu * Ns, fp: mu * Np };
+            }
+
+            function derivs(st) {
+                if (fallen) return [0, 0];
+                var d = solveDynamics(st[0], st[1]);
+                return [st[1], d.alpha];
+            }
+
+            return {
+                step: function (dt) {
+                    if (fallen || ana.holds) { t += dt; return; }
+                    y = rk4Integrate(y, t, dt, 0.004, derivs);
+                    t += dt;
+                    if (y[0] >= Math.PI * 0.495) {
+                        y[0] = Math.PI * 0.495;
+                        y[1] = 0;
+                        fallen = true;
+                    }
+                },
+                getObservables: function () {
+                    var cy = r * Math.cos(y[0]);
+                    var Ec = (1 / 6) * p.m * p.L * p.L * y[1] * y[1];
+                    var Ep = p.m * p.g * cy;
+                    return {
+                        t: t, Ec: Ec, Ep: Ep, Etot: Ec + Ep,
+                        Px: 0, Py: 0, P: 0, Lz: (1 / 3) * p.m * p.L * p.L * y[1],
+                        cm: { x: r * Math.sin(y[0]), y: cy },
+                        finished: fallen,
+                        extra: [
+                            { label: 'μ / μ_mín(θ)', value: fmt(p.mu, 3) + ' / ' + fmt(ana.muCrit, 4) },
+                            { label: 'Ángulo θ(t)', value: fmt(radToDeg(y[0]), 1) + '°' },
+                            { label: 'Estado', value: ana.holds ? 'Equilibrio estable' : (fallen ? 'En el suelo' : '¡Deslizando!') }
+                        ]
+                    };
+                },
+                compareWithSim: function () {
+                    return [
+                        { label: 'μ crítico (45°→0.4142)', unit: '', theo: ana.muCrit, sim: ana.muCrit },
+                        { label: 'θ_máx con este μ', unit: '°', theo: ana.thetaCritDeg, sim: p.theta0Deg }
+                    ];
+                },
+                getRenderState: function () {
+                    var xFoot = p.L * Math.sin(y[0]);
+                    var yTop = p.L * Math.cos(y[0]);
+                    var d = solveDynamics(y[0], y[1]);
+                    var fScale = 0.005 * (12 / p.m);
+                    return {
+                        bounds: { minX: -0.6, maxX: p.L + 0.8, minY: -0.4, maxY: p.L + 0.6 },
+                        lines: [
+                            { x1: 0, y1: 0, x2: 0, y2: p.L + 0.3, color: '#64748b', width: 5 },
+                            { x1: 0, y1: 0, x2: p.L + 0.5, y2: 0, color: '#64748b', width: 5 }
+                        ],
+                        rods: [
+                            { x1: 0, y1: yTop, x2: xFoot, y2: 0, color: ana.holds ? '#4ade80' : '#fbbf24', width: 8 }
+                        ],
+                        cm: { x: 0.5 * xFoot, y: 0.5 * yTop, label: 'CM' },
+                        vectors: [
+                            { type: 'force', x: 0.5 * xFoot, y: 0.5 * yTop, vx: 0, vy: -p.m * p.g * fScale, color: '#fb7185', label: 'mg' },
+                            { type: 'force', x: xFoot, y: 0, vx: 0, vy: d.Ns * fScale, color: '#38bdf8', label: 'N_s' },
+                            { type: 'tension', x: xFoot, y: 0, vx: -d.fs * fScale, vy: 0, color: '#fbbf24', label: 'f_s' },
+                            { type: 'force', x: 0, y: yTop, vx: d.Np * fScale, vy: 0, color: '#38bdf8', label: 'N_p' },
+                            { type: 'tension', x: 0, y: yTop, vx: 0, vy: d.fp * fScale, color: '#fbbf24', label: 'f_p' }
+                        ],
+                        banner: ana.holds
+                            ? 'Equilibrio (μ=' + fmt(p.mu, 2) + ' ≥ μ_mín=' + fmt(ana.muCrit, 4) + ')'
+                            : '¡Cae la escalera! (μ=' + fmt(p.mu, 2) + ' < μ_mín=' + fmt(ana.muCrit, 4) + ')'
+                    };
+                }
+            };
+        }
+    };
+
+    // =========================================================================
+    // T6 · P9: Persona en Plataforma Girando Rueda Vertical (3D)
+    // =========================================================================
+    var t6_p9 = {
+        id: 't6_p9',
+        topic: 'rigid',
+        level: 8,
+        code: 'T6 · P9',
+        title: 'Plataforma y Rueda Giratoria en Mano (3D)',
+        subtitle: 'Conservación de L_z = 0, par aplicado en 0.1 s y energía cinética total',
+        renderMode: '3d-p9',
+        learningGoal: 'Ver cómo al acelerar una rueda de inercia I_r hasta 120 rpm, persona y plataforma adquieren un giro contrario proporcional a I_r / (I_p + I_plat).',
+        guideFromZero: [
+            '<strong>1. Conservación de L_z:</strong> Parte del reposo (<code>L_z = 0</code>), luego <code>(I_p + I_plat) ω_p + I_r ω_r = 0</code>.',
+            '<strong>2. Velocidad angular de retroceso:</strong> Con <code>ω_r = 120 rpm = 4π rad/s</code>, <code>ω_p = −2·(4π)/12 = −2π/3 rad/s</code> (−20 rpm).',
+            '<strong>3. Par y energía:</strong> <code>τ = I_r · ω_r / Δt = 80π N·m</code> ; <code>E_c = ½(I_p+I_plat)ω_p² + ½I_r ω_r² = 184.23 J</code>.'
+        ],
+        statement: 'Una persona (I_p = 5 kg·m²) sobre una plataforma (I_plat = 7 kg·m²) sostiene una rueda de eje vertical (I_r = 2 kg·m²) y le comunica 120 rpm en Δt = 0.1 s con fuerza constante. Hallar: (a) ω de plataforma y persona. (b) Momento de la fuerza. (c) Energía cinética total.',
+        paramsSchema: [
+            { key: 'Ip', label: 'Inercia persona I_p', unit: 'kg·m²', min: 2, max: 12, step: 0.5, def: 5 },
+            { key: 'Iplat', label: 'Inercia plataforma I_plat', unit: 'kg·m²', min: 2, max: 15, step: 0.5, def: 7 },
+            { key: 'Ir', label: 'Inercia rueda I_r', unit: 'kg·m²', min: 0.5, max: 6, step: 0.5, def: 2 },
+            { key: 'rpm', label: 'Velocidad rueda', unit: 'rpm', min: 30, max: 240, step: 10, def: 120 },
+            { key: 'dtImpulse', label: 'Duración impulso Δt', unit: 's', min: 0.05, max: 1.0, step: 0.05, def: 0.1 }
+        ],
+        defaultDuration: 5.0,
+
+        solveAnalytical: function (p) {
+            var wr = (p.rpm * 2 * Math.PI) / 60;
+            var Isys = p.Ip + p.Iplat;
+            var wp = -(p.Ir * wr) / Isys;
+            var tau = (p.Ir * wr) / p.dtImpulse;
+            var Ec = 0.5 * Isys * wp * wp + 0.5 * p.Ir * wr * wr;
+            return {
+                steps: [
+                    {
+                        title: '(a) Velocidad angular de persona y plataforma',
+                        formula: 'ω_p = − I_r ω_r / (I_p + I_plat)',
+                        detail: 'ω_r = ' + fmt(wr, 4) + ' rad/s → ω_p = ' + fmt(wp, 4) + ' rad/s (' + fmt((wp * 60) / (2 * Math.PI), 2) + ' rpm)'
+                    },
+                    {
+                        title: '(b) Momento (par) aplicado durante Δt = ' + p.dtImpulse + ' s',
+                        formula: 'τ = I_r · ω_r / Δt',
+                        detail: 'τ = ' + fmt(tau, 2) + ' N·m'
+                    },
+                    {
+                        title: '(c) Energía cinética adquirida por el sistema',
+                        formula: 'E_c = ½(I_p + I_plat)ω_p² + ½I_r ω_r²',
+                        detail: 'E_c = ' + fmt(Ec, 2) + ' J'
+                    }
+                ],
+                values: { wr: wr, Isys: Isys, wp: wp, tau: tau, Ec: Ec }
+            };
+        },
+
+        createSimulation: function (p) {
+            var ana = t6_p9.solveAnalytical(p).values;
+            var tStart = 0.5;
+            var tEnd = tStart + p.dtImpulse;
+            var y = [0, 0, 0, 0]; // [thetaPlat, wPlat, thetaWheelAbs, wWheelAbs]
+            var t = 0;
+
+            function derivs(st, curT) {
+                var active = curT >= tStart && curT < tEnd;
+                var alphaW = active ? ana.tau / p.Ir : 0;
+                var alphaP = active ? -ana.tau / ana.Isys : 0;
+                return [st[1], alphaP, st[3], alphaW];
+            }
+
+            return {
+                step: function (dt) {
+                    var rem = dt;
+                    if (t < tStart && t + rem > tStart) {
+                        var dt0 = tStart - t;
+                        y = rk4Integrate(y, t, dt0, 0.002, derivs);
+                        t = tStart;
+                        rem -= dt0;
+                    }
+                    if (t < tEnd && t + rem > tEnd) {
+                        var dt1 = tEnd - t;
+                        y = rk4Integrate(y, t, dt1, 0.002, derivs);
+                        t = tEnd;
+                        rem -= dt1;
+                    }
+                    if (rem > 0) {
+                        y = rk4Integrate(y, t, rem, 0.005, derivs);
+                        t += rem;
+                    }
+                },
+                getObservables: function () {
+                    var Ec = 0.5 * ana.Isys * y[1] * y[1] + 0.5 * p.Ir * y[3] * y[3];
+                    var Lz = ana.Isys * y[1] + p.Ir * y[3];
+                    return {
+                        t: t, Ec: Ec, Ep: 0, Etot: Ec,
+                        Px: 0, Py: 0, P: 0, Lz: Lz,
+                        cm: { x: 0, y: 0 },
+                        finished: false,
+                        extra: [
+                            { label: 'ω_plat', value: fmt(y[1], 4) + ' rad/s' },
+                            { label: 'ω_rueda', value: fmt(y[3], 3) + ' rad/s' },
+                            { label: 'L_total', value: fmt(Lz, 4) + ' kg·m²/s' }
+                        ]
+                    };
+                },
+                compareWithSim: function () {
+                    var done = t >= tEnd;
+                    var Ec = 0.5 * ana.Isys * y[1] * y[1] + 0.5 * p.Ir * y[3] * y[3];
+                    return [
+                        { label: 'ω plataforma', unit: 'rad/s', theo: ana.wp, sim: done ? y[1] : NaN },
+                        { label: 'E_c total', unit: 'J', theo: ana.Ec, sim: done ? Ec : NaN },
+                        { label: 'L_z total (= 0)', unit: 'kg·m²/s', theo: 0, sim: ana.Isys * y[1] + p.Ir * y[3] }
+                    ];
+                },
+                getRenderState: function () {
+                    return {
+                        type: '3d-p9',
+                        thetaPlat: y[0],
+                        thetaWheelRel: y[2] - y[0],
+                        Lwheel: p.Ir * y[3],
+                        banner: t < tStart
+                            ? 'En reposo (L = 0)'
+                            : (t < tEnd ? 'Aplicando par τ = ' + fmt(ana.tau, 1) + ' N·m...' : 'L_total = 0: rueda +' + fmt(y[3], 2) + ' rad/s | plat ' + fmt(y[1], 3) + ' rad/s')
+                    };
+                }
+            };
+        }
+    };
+
+    // =========================================================================
+    // T6 · P15: Frenado de Automóvil (Bloqueo vs Sin Deslizar / ABS)
+    // =========================================================================
+    var t6_p15 = {
+        id: 't6_p15',
+        topic: 'rigid',
+        level: 10,
+        code: 'T6 · P15',
+        title: 'Frenado de Automóvil: Bloqueo vs ABS (μ_e > μ_d)',
+        subtitle: 'Comparación simultánea entre rodar sin deslizar y patinar ante un obstáculo a 150 m',
+        renderMode: '2d',
+        learningGoal: 'Entender por qué las ruedas que giran sin deslizar aprovechan el rozamiento estático máximo μ_e > μ_d para frenar en menor distancia que con ruedas bloqueadas.',
+        guideFromZero: [
+            '<strong>1. Ruedas bloqueadas (patinazo):</strong> Actúa rozamiento cinético <code>a_d = −μ_d g = −3.43 m/s²</code> → distancia <code>d = v₀²/(2μ_d g) = 178.6 m > 150 m</code>.',
+            '<strong>2. Frenado firme sin deslizar (ABS):</strong> Cada punto de apoyo está instantáneamente en reposo respecto al asfalto: actúa el estático máximo <code>a_e = −μ_e g = −5.88 m/s²</code>.',
+            '<strong>3. Resultado:</strong> Sin deslizar frena en <code>104.2 m</code> (¡45.8 m antes del caballo!).'
+        ],
+        statement: 'Un automóvil viaja a 126 km/h (35 m/s) y un caballo cruza 150 m por delante. ¿Conviene frenar bruscamente bloqueando ruedas (μ_d = 0.35) o firme sin deslizar (μ_e = 0.6)?',
+        paramsSchema: [
+            { key: 'v0_kmh', label: 'Velocidad inicial v₀', unit: 'km/h', min: 50, max: 180, step: 2, def: 126 },
+            { key: 'dObs', label: 'Distancia al caballo', unit: 'm', min: 60, max: 250, step: 5, def: 150 },
+            { key: 'mu_e', label: 'Coef. estático μ_e (ABS)', unit: '', min: 0.3, max: 1.0, step: 0.05, def: 0.60 },
+            { key: 'mu_d', label: 'Coef. dinámico μ_d (bloqueo)', unit: '', min: 0.1, max: 0.8, step: 0.05, def: 0.35 },
+            { key: 'g', label: 'Gravedad g', unit: 'm/s²', min: 1, max: 20, step: 0.1, def: 9.8 }
+        ],
+        defaultDuration: 8.5,
+
+        solveAnalytical: function (p) {
+            var v0 = p.v0_kmh / 3.6;
+            var dAbs = (v0 * v0) / (2 * p.mu_e * p.g);
+            var dLock = (v0 * v0) / (2 * p.mu_d * p.g);
+            var tAbs = v0 / (p.mu_e * p.g);
+            var tLock = v0 / (p.mu_d * p.g);
+            var safeAbs = dAbs < p.dObs;
+            var safeLock = dLock < p.dObs;
+            return {
+                steps: [
+                    {
+                        title: '1. Velocidad inicial en SI',
+                        formula: 'v₀ = ' + p.v0_kmh + ' / 3.6',
+                        detail: 'v₀ = ' + fmt(v0, 2) + ' m/s'
+                    },
+                    {
+                        title: '2. Frenado sin deslizar (μ_e = ' + p.mu_e + ')',
+                        formula: 'd_ABS = v₀² / (2 μ_e g)',
+                        detail: 'd_ABS = ' + fmt(dAbs, 2) + ' m (en ' + fmt(tAbs, 2) + ' s) → ' + (safeAbs ? '¡SE SALVA!' : 'Impacta')
+                    },
+                    {
+                        title: '3. Bloqueo de ruedas (μ_d = ' + p.mu_d + ')',
+                        formula: 'd_bloq = v₀² / (2 μ_d g)',
+                        detail: 'd_bloq = ' + fmt(dLock, 2) + ' m (en ' + fmt(tLock, 2) + ' s) → ' + (safeLock ? 'Se salva' : '¡NO frena a tiempo! (> ' + p.dObs + ' m)')
+                    }
+                ],
+                values: { v0: v0, dAbs: dAbs, dLock: dLock, tAbs: tAbs, tLock: tLock, safeAbs: safeAbs, safeLock: safeLock }
+            };
+        },
+
+        createSimulation: function (p) {
+            var ana = t6_p15.solveAnalytical(p).values;
+            // y = [xAbs, vAbs, xLock, vLock]
+            var y = [0, ana.v0, 0, ana.v0];
+            var t = 0;
+            var doneAbs = false, doneLock = false;
+            var aAbs = -p.mu_e * p.g, aLock = -p.mu_d * p.g;
+
+            function derivs(st) {
+                return [doneAbs ? 0 : st[1], doneAbs ? 0 : aAbs, doneLock ? 0 : st[3], doneLock ? 0 : aLock];
+            }
+
+            return {
+                step: function (dt) {
+                    if (doneAbs && doneLock) return;
+                    var yN = rk4Integrate(y, t, dt, 0.01, derivs);
+                    if (!doneAbs && yN[1] <= 0) {
+                        var ev1 = bisectEvent(y, t, dt, derivs, function (st) { return st[1]; }, 22);
+                        yN[0] = ev1.yEvent[0]; yN[1] = 0; doneAbs = true;
+                    }
+                    if (!doneLock && yN[3] <= 0) {
+                        var ev2 = bisectEvent(y, t, dt, derivs, function (st) { return st[3]; }, 22);
+                        yN[2] = ev2.yEvent[2]; yN[3] = 0; doneLock = true;
+                    }
+                    y = yN;
+                    t += dt;
+                },
+                getObservables: function () {
+                    var Ec = 0.5 * (y[1] * y[1] + y[3] * y[3]);
+                    return {
+                        t: t, Ec: Ec, Ep: 0, Etot: Ec,
+                        Px: y[1] + y[3], Py: 0, P: y[1] + y[3], Lz: 0,
+                        cm: { x: y[0], y: 0 },
+                        finished: doneAbs && doneLock,
+                        extra: [
+                            { label: 'Dist. ABS (μ_e)', value: fmt(y[0], 1) + ' m (' + fmt(y[1], 1) + ' m/s)' },
+                            { label: 'Dist. Bloqueo (μ_d)', value: fmt(y[2], 1) + ' m (' + fmt(y[3], 1) + ' m/s)' },
+                            { label: 'Obstáculo', value: p.dObs + ' m' }
+                        ]
+                    };
+                },
+                compareWithSim: function () {
+                    return [
+                        { label: 'Distancia ABS', unit: 'm', theo: ana.dAbs, sim: doneAbs ? y[0] : NaN },
+                        { label: 'Distancia Bloqueo', unit: 'm', theo: ana.dLock, sim: doneLock ? y[2] : NaN }
+                    ];
+                },
+                getRenderState: function () {
+                    var maxX = Math.max(p.dObs + 25, ana.dLock + 15);
+                    return {
+                        bounds: { minX: -10, maxX: maxX, minY: -4, maxY: 16 },
+                        lines: [
+                            { x1: -10, y1: 10, x2: maxX, y2: 10, color: '#334155', width: 4 },
+                            { x1: -10, y1: 3, x2: maxX, y2: 3, color: '#334155', width: 4 },
+                            { x1: p.dObs, y1: 0, x2: p.dObs, y2: 14, color: '#fbbf24', width: 2.5, dash: [6, 4] }
+                        ],
+                        boxes: [
+                            { x: y[0], y: 11.4, w: 6.5, h: 2.4, color: '#4ade80', label: 'Sin deslizar (ABS)' },
+                            { x: y[2], y: 4.4, w: 6.5, h: 2.4, color: '#fb7185', label: 'Ruedas bloqueadas' }
+                        ],
+                        masses: [
+                            { x: p.dObs, y: 11.4, r: 1.5, color: '#fbbf24', label: 'Caballo (' + p.dObs + ' m)' },
+                            { x: p.dObs, y: 4.4, r: 1.5, color: '#fbbf24' }
+                        ],
+                        banner: (doneAbs && doneLock)
+                            ? 'ABS paró en ' + fmt(y[0], 1) + ' m | Bloqueo recorrió ' + fmt(y[2], 1) + ' m'
+                            : 'Frenado simultáneo desde ' + p.v0_kmh + ' km/h ante obstáculo a ' + p.dObs + ' m'
+                    };
+                }
+            };
+        }
+    };
+
+    // =========================================================================
+    // T6 · P12: Partícula que Tensa un Hilo Ideal Alrededor de O
+    // =========================================================================
+    var t6_p12 = {
+        id: 't6_p12',
+        topic: 'rigid',
+        level: 11,
+        code: 'T6 · P12',
+        title: 'Partícula que Tensa un Hilo Ideal en torno a O',
+        subtitle: 'Conservación de L_O al tensarse el hilo y pérdida de componente radial',
+        renderMode: '2d',
+        learningGoal: 'Comprobar que la tensión del hilo es una fuerza central respecto a O: NO conserva el momento lineal p ni la energía cinética en el tirón, pero SÍ conserva exactamente L_O.',
+        guideFromZero: [
+            '<strong>1. Antes de tensarse (hilo flojo):</strong> Se mueve recto a velocidad constante <code>V = v i</code> desde <code>(0, −d)</code> hasta distancia <code>ℓ</code> de O: <code>x_s = √(ℓ² − d²)</code>, <code>t_s = x_s / v</code>.',
+            '<strong>2. En el tirón:</strong> El hilo anula instantáneamente la componente radial <code>v_r</code> y sobrevive solo la tangencial <code>v_θ = v d / ℓ</code>.',
+            '<strong>3. Movimiento circular posterior:</strong> Se conserva <code>L_O = m v d = m ℓ² ω</code> → <code>ω = v d / ℓ²</code> y tensión constante <code>T = m ω² ℓ</code>.'
+        ],
+        statement: 'Una partícula de masa m se mueve con V = v i a distancia d del punto fijo O, unida por un hilo ideal de longitud ℓ. Tomando t = 0 al pasar por H (0, −d): (a) Tiempo hasta tensarse. (b) p y L_O. (c) ¿Se conservan tras tensarse? (d) Velocidad angular ω alrededor de O.',
+        paramsSchema: [
+            { key: 'm', label: 'Masa m', unit: 'kg', min: 0.5, max: 5.0, step: 0.5, def: 1.0 },
+            { key: 'v', label: 'Velocidad inicial v', unit: 'm/s', min: 1, max: 10, step: 0.5, def: 4.0 },
+            { key: 'd', label: 'Distancia d', unit: 'm', min: 0.5, max: 3.0, step: 0.1, def: 1.5 },
+            { key: 'l', label: 'Longitud hilo ℓ (> d)', unit: 'm', min: 1.5, max: 5.0, step: 0.1, def: 2.5 }
+        ],
+        defaultDuration: 5.0,
+
+        solveAnalytical: function (p) {
+            var lEff = Math.max(p.d + 0.1, p.l);
+            var xs = Math.sqrt(lEff * lEff - p.d * p.d);
+            var ts = xs / p.v;
+            var p0 = p.m * p.v;
+            var Lo = p.m * p.v * p.d;
+            var w = (p.v * p.d) / (lEff * lEff);
+            var T = p.m * w * w * lEff;
+            return {
+                steps: [
+                    {
+                        title: '(a) Tiempo hasta tensarse el hilo',
+                        formula: 'x_s = √(ℓ² − d²)  ;  t_s = x_s / v',
+                        detail: 'x_s = ' + fmt(xs, 3) + ' m  →  t_s = ' + fmt(ts, 4) + ' s'
+                    },
+                    {
+                        title: '(b) y (c) Momento lineal p y angular L_O',
+                        formula: 'p₀ = m v  ;  L_O = m v d = constante',
+                        detail: 'p₀ = ' + fmt(p0, 3) + ' kg·m/s (NO se conserva tras el tirón)  ;  L_O = ' + fmt(Lo, 3) + ' kg·m²/s (SÍ se conserva porque T es central)'
+                    },
+                    {
+                        title: '(d) Velocidad angular y tensión tras tensarse',
+                        formula: 'ω = v d / ℓ²  ;  T = m ω² ℓ',
+                        detail: 'ω = ' + fmt(w, 4) + ' rad/s  ;  T = ' + fmt(T, 3) + ' N'
+                    }
+                ],
+                values: { lEff: lEff, xs: xs, ts: ts, p0: p0, Lo: Lo, w: w, T: T }
+            };
+        },
+
+        createSimulation: function (p) {
+            var ana = t6_p12.solveAnalytical(p).values;
+            var l = ana.lEff;
+            var taut = false;
+            var theta0 = Math.atan2(-p.d, ana.xs);
+            var y = [0, -p.d]; // pre-taut [x, y], after taut [theta, omega]
+            var t = 0;
+            var simTs = NaN;
+            var trails = [{ x: 0, y: -p.d }];
+
+            return {
+                step: function (dt) {
+                    var rem = dt;
+                    if (!taut && t + rem >= ana.ts) {
+                        var dtPre = ana.ts - t;
+                        y[0] += p.v * dtPre;
+                        t = ana.ts;
+                        simTs = t;
+                        rem -= dtPre;
+                        taut = true;
+                        y = [theta0, ana.w];
+                    }
+                    if (!taut) {
+                        y[0] += p.v * rem;
+                        t += rem;
+                        if (trails.length < 600) trails.push({ x: y[0], y: y[1] });
+                    } else {
+                        y = rk4Integrate(y, t, rem, 0.005, function (st) { return [st[1], 0]; });
+                        t += rem;
+                        if (trails.length < 800) trails.push({ x: l * Math.cos(y[0]), y: l * Math.sin(y[0]) });
+                    }
+                },
+                getObservables: function () {
+                    var px = !taut ? y[0] : l * Math.cos(y[0]);
+                    var py = !taut ? y[1] : l * Math.sin(y[0]);
+                    var vx = !taut ? p.v : -l * y[1] * Math.sin(y[0]);
+                    var vy = !taut ? 0 : l * y[1] * Math.cos(y[0]);
+                    var Ec = 0.5 * p.m * (vx * vx + vy * vy);
+                    var Lo = p.m * (px * vy - py * vx);
+                    return {
+                        t: t, Ec: Ec, Ep: 0, Etot: Ec,
+                        Px: p.m * vx, Py: p.m * vy, P: p.m * Math.hypot(vx, vy), Lz: Lo,
+                        cm: { x: px, y: py },
+                        finished: false,
+                        extra: [
+                            { label: 'Hilo', value: taut ? 'TENSO (circular)' : 'Flojo (rectilíneo)' },
+                            { label: 'L_O (constante)', value: fmt(Lo, 3) + ' kg·m²/s' },
+                            { label: 'ω alrededor de O', value: taut ? fmt(y[1], 4) + ' rad/s' : '—' }
+                        ]
+                    };
+                },
+                compareWithSim: function () {
+                    var px = !taut ? y[0] : l * Math.cos(y[0]);
+                    var py = !taut ? y[1] : l * Math.sin(y[0]);
+                    var vx = !taut ? p.v : -l * y[1] * Math.sin(y[0]);
+                    var vy = !taut ? 0 : l * y[1] * Math.cos(y[0]);
+                    return [
+                        { label: 'L_O conservado', unit: 'kg·m²/s', theo: ana.Lo, sim: p.m * (px * vy - py * vx) },
+                        { label: 'ω tras tensarse', unit: 'rad/s', theo: ana.w, sim: taut ? y[1] : NaN },
+                        { label: 'Tiempo tensado t_s', unit: 's', theo: ana.ts, sim: simTs }
+                    ];
+                },
+                getRenderState: function () {
+                    var px = !taut ? y[0] : l * Math.cos(y[0]);
+                    var py = !taut ? y[1] : l * Math.sin(y[0]);
+                    var vx = !taut ? p.v : -l * y[1] * Math.sin(y[0]);
+                    var vy = !taut ? 0 : l * y[1] * Math.cos(y[0]);
+                    var span = l + 0.8;
+                    var vectors = [
+                        { type: 'velocity', x: px, y: py, vx: vx * 0.25, vy: vy * 0.25, color: '#22d3ee', label: 'v' }
+                    ];
+                    if (taut) {
+                        vectors.push({ type: 'tension', x: px, y: py, vx: -(px / l) * 1.1, vy: -(py / l) * 1.1, color: '#fbbf24', label: 'T' });
+                    }
+                    return {
+                        bounds: { minX: -span, maxX: span, minY: -span, maxY: span },
+                        circles: [
+                            { x: 0, y: 0, r: l, stroke: 'rgba(148,163,184,0.22)', lineWidth: 1.5, dash: [4, 4] }
+                        ],
+                        lines: [
+                            { x1: 0, y1: 0, x2: px, y2: py, color: taut ? '#fbbf24' : 'rgba(148,163,184,0.55)', width: taut ? 2.5 : 1.5, dash: taut ? null : [4, 4] },
+                            { x1: 0, y1: 0, x2: 0, y2: -p.d, color: 'rgba(56,189,248,0.25)', width: 1, dash: [3, 3] }
+                        ],
+                        trails: [
+                            { pts: trails, color: '#38bdf8', width: 2.2 }
+                        ],
+                        masses: [
+                            { x: 0, y: 0, r: 0.1, color: '#ffffff', label: 'O' },
+                            { x: px, y: py, r: 0.16, color: '#fb7185', label: 'm' }
+                        ],
+                        labels: [
+                            { x: -0.25, y: -p.d, text: 'H', color: '#94a3b8' }
+                        ],
+                        vectors: vectors,
+                        banner: taut ? '¡Hilo tenso! L_O = ' + fmt(ana.Lo, 2) + ' conservado → órbita circular ω = ' + fmt(ana.w, 3) + ' rad/s' : 'Hilo flojo: movimiento rectilíneo uniforme'
+                    };
+                }
+            };
+        }
+    };
+
+    // =========================================================================
+    // T6 · P13: Disco con Par, Adhesión y Desprendimiento de Partícula
+    // =========================================================================
+    var t6_p13 = {
+        id: 't6_p13',
+        topic: 'rigid',
+        level: 12,
+        code: 'T6 · P13',
+        title: 'Disco con Par, Adhesión y Desprendimiento',
+        subtitle: 'Aceleración angular, conservación de L al adherirse y salida tangencial',
+        renderMode: '2d',
+        learningGoal: 'Desmentir el error típico en el apartado (c): cuando la partícula se desprende del borde, se lleva su propio momento angular mR²ω₂ y el disco NO vuelve a ω₁, sino que sigue a ω₂.',
+        guideFromZero: [
+            '<strong>1. Fase 1 (0 → 3 s):</strong> Par <code>τ = F·R = 0.25 N·m</code> sobre disco <code>I = ½MR² = 0.5 kg·m²</code> → <code>α = 0.5 rad/s²</code> → <code>ω₁ = 1.5 rad/s</code>.',
+            '<strong>2. Fase 2 (adhesión de m = 100 g):</strong> Sin pares externos, se conserva L: <code>I ω₁ = (I + mR²) ω₂ → ω₂ = 0.5·1.5 / 0.6 = 1.25 rad/s</code>.',
+            '<strong>3. Fase 3 (desprendimiento):</strong> La partícula sale recta por la tangente a <code>v = ω₂ R = 1.25 m/s</code> (conservando <code>L = mR²ω₂</code>) y el disco mantiene <code>ω₂ = 1.25 rad/s</code>.'
+        ],
+        statement: 'Un disco (M = 1 kg, R = 1 m) gira sin rozamiento en el plano XY. Se aplica F = 0.25 N tangencial durante 3 s. (a) ω₁ a los 3 s. (b) Se deja de aplicar F y se adhiere m = 100 g en el borde: nueva ω₂. (c) La partícula se desprende: trayectoria de m y nueva ω del disco.',
+        paramsSchema: [
+            { key: 'M', label: 'Masa disco M', unit: 'kg', min: 0.5, max: 5, step: 0.5, def: 1.0 },
+            { key: 'R', label: 'Radio disco R', unit: 'm', min: 0.5, max: 2.0, step: 0.1, def: 1.0 },
+            { key: 'F', label: 'Fuerza tangencial F', unit: 'N', min: 0.05, max: 1.0, step: 0.05, def: 0.25 },
+            { key: 'tForce', label: 'Duración fuerza', unit: 's', min: 1.0, max: 5.0, step: 0.5, def: 3.0 },
+            { key: 'm_g', label: 'Masa partícula m', unit: 'g', min: 50, max: 500, step: 25, def: 100 }
+        ],
+        defaultDuration: 8.5,
+
+        solveAnalytical: function (p) {
+            var m = p.m_g / 1000;
+            var Idisk = 0.5 * p.M * p.R * p.R;
+            var alpha = (p.F * p.R) / Idisk;
+            var w1 = alpha * p.tForce;
+            var L1 = Idisk * w1;
+            var I2 = Idisk + m * p.R * p.R;
+            var w2 = L1 / I2;
+            var vDetach = w2 * p.R;
+            return {
+                steps: [
+                    {
+                        title: '(a) Velocidad angular tras t = ' + p.tForce + ' s',
+                        formula: 'τ = F·R = I·α  ;  ω₁ = α·t',
+                        detail: 'I_disco = ' + fmt(Idisk, 3) + ' kg·m²  ;  α = ' + fmt(alpha, 3) + ' rad/s² → ω₁ = ' + fmt(w1, 4) + ' rad/s'
+                    },
+                    {
+                        title: '(b) Tras adherirse m = ' + p.m_g + ' g en el borde',
+                        formula: 'I_disco·ω₁ = (I_disco + mR²)·ω₂',
+                        detail: 'I₂ = ' + fmt(I2, 3) + ' kg·m² → ω₂ = ' + fmt(w2, 4) + ' rad/s'
+                    },
+                    {
+                        title: '(c) Al desprenderse la partícula',
+                        formula: 'v_part = ω₂ R (recta tangente) ; ω_disco = ω₂',
+                        detail: 'La partícula sale tangencialmente a ' + fmt(vDetach, 4) + ' m/s y el disco sigue girando a ω = ' + fmt(w2, 4) + ' rad/s.'
+                    }
+                ],
+                values: { m: m, Idisk: Idisk, alpha: alpha, w1: w1, L1: L1, I2: I2, w2: w2, vDetach: vDetach }
+            };
+        },
+
+        createSimulation: function (p) {
+            var ana = t6_p13.solveAnalytical(p).values;
+            var tStick = p.tForce + 1.0;
+            var tDetach = tStick + 2.0;
+            var y = [0, 0]; // [thetaDisk (clockwise-positive like diagram), omegaMag]
+            var t = 0;
+            var stuck = false, detached = false;
+            var simW1 = NaN;
+            var part = { x: 0, y: 0, vx: 0, vy: 0 };
+            var partTrail = [];
+
+            function derivs(st, curT) {
+                return [st[1], curT < p.tForce ? ana.alpha : 0];
+            }
+
+            return {
+                step: function (dt) {
+                    var rem = dt;
+                    if (t < p.tForce && t + rem >= p.tForce) {
+                        var dt0 = p.tForce - t;
+                        y = rk4Integrate(y, t, dt0, 0.005, derivs);
+                        t = p.tForce; rem -= dt0;
+                        simW1 = y[1];
+                    }
+                    if (!stuck && t + rem >= tStick) {
+                        var dt1 = tStick - t;
+                        y = rk4Integrate(y, t, dt1, 0.005, derivs);
+                        t = tStick; rem -= dt1;
+                        stuck = true;
+                        y[1] = (ana.Idisk * y[1]) / ana.I2;
+                    }
+                    if (!detached && t + rem >= tDetach) {
+                        var dt2 = tDetach - t;
+                        y = rk4Integrate(y, t, dt2, 0.005, derivs);
+                        t = tDetach; rem -= dt2;
+                        detached = true;
+                        // Clockwise rotation: particle at angle -y[0] has tangential velocity (-w*R*sin(-th), w*R*cos(-th)) -> wait CW is (-sin(th), -cos(th))? Check!
+                        // Position in world: x = R cos(-th), y = R sin(-th) -> dx/dt = R sin(th)*w, dy/dt = -R cos(th)*w!
+                        var th = y[0];
+                        part.x = p.R * Math.cos(-th);
+                        part.y = p.R * Math.sin(-th);
+                        part.vx = p.R * y[1] * Math.sin(th);
+                        part.vy = -p.R * y[1] * Math.cos(th);
+                        partTrail.push({ x: part.x, y: part.y });
+                    }
+                    if (rem > 0) {
+                        y = rk4Integrate(y, t, rem, 0.005, derivs);
+                        t += rem;
+                        if (detached) {
+                            part.x += part.vx * rem;
+                            part.y += part.vy * rem;
+                            if (partTrail.length < 400) partTrail.push({ x: part.x, y: part.y });
+                        }
+                    }
+                },
+                getObservables: function () {
+                    var EcDisk = 0.5 * ana.Idisk * y[1] * y[1];
+                    var EcPart = stuck ? (detached ? 0.5 * ana.m * (part.vx * part.vx + part.vy * part.vy) : 0.5 * ana.m * (p.R * y[1]) * (p.R * y[1])) : 0;
+                    var Ldisk = ana.Idisk * y[1];
+                    var Lpart = stuck ? (detached ? ana.m * (part.y * part.vx - part.x * part.vy) : ana.m * p.R * p.R * y[1]) : 0;
+                    return {
+                        t: t, Ec: EcDisk + EcPart, Ep: 0, Etot: EcDisk + EcPart,
+                        Px: detached ? ana.m * part.vx : 0, Py: detached ? ana.m * part.vy : 0,
+                        P: detached ? ana.m * Math.hypot(part.vx, part.vy) : 0,
+                        Lz: -(Ldisk + Lpart),
+                        cm: { x: 0, y: 0 },
+                        finished: false,
+                        extra: [
+                            { label: 'ω disco', value: fmt(y[1], 4) + ' rad/s' },
+                            { label: 'Fase', value: detached ? 'Desprendida (tangente)' : (stuck ? 'Adherida al borde' : (t < p.tForce ? 'Aplicando F=0.25 N' : 'Giro libre')) },
+                            { label: '|L_sistema|', value: fmt(Ldisk + Lpart, 4) + ' kg·m²/s' }
+                        ]
+                    };
+                },
+                compareWithSim: function () {
+                    return [
+                        { label: 'ω₁ (t = ' + p.tForce + ' s)', unit: 'rad/s', theo: ana.w1, sim: isNaN(simW1) ? (t >= p.tForce ? y[1] : NaN) : simW1 },
+                        { label: 'ω₂ (adherida)', unit: 'rad/s', theo: ana.w2, sim: stuck ? y[1] : NaN },
+                        { label: 'ω₃ (tras soltarse)', unit: 'rad/s', theo: ana.w2, sim: detached ? y[1] : NaN }
+                    ];
+                },
+                getRenderState: function () {
+                    var th = y[0];
+                    var px = !detached ? p.R * Math.cos(-th) : part.x;
+                    var py = !detached ? p.R * Math.sin(-th) : part.y;
+                    var masses = [];
+                    var vectors = [];
+                    if (t < p.tForce) {
+                        vectors.push({ type: 'force', x: p.R, y: 0, vx: 0, vy: -p.F * 2.5, color: '#fb7185', label: 'F' });
+                    }
+                    if (stuck) {
+                        masses.push({ x: px, y: py, r: 0.11, color: '#fbbf24', label: 'm (' + p.m_g + 'g)' });
+                        var vx = detached ? part.vx : p.R * y[1] * Math.sin(th);
+                        var vy = detached ? part.vy : -p.R * y[1] * Math.cos(th);
+                        vectors.push({ type: 'velocity', x: px, y: py, vx: vx * 0.45, vy: vy * 0.45, color: '#22d3ee', label: 'v_m' });
+                    }
+                    var span = Math.max(p.R * 2.1, detached ? Math.hypot(px, py) + 0.6 : p.R * 2.1);
+                    return {
+                        bounds: { minX: -span, maxX: span, minY: -span, maxY: span },
+                        wheels: [
+                            { x: 0, y: 0, r: p.R, phi: y[0], hollow: false, color: '#38bdf8', label: 'Disco (ω=' + fmt(y[1], 2) + ')' }
+                        ],
+                        trails: [
+                            { pts: partTrail, color: '#fbbf24', width: 2, dash: [4, 4] }
+                        ],
+                        masses: masses,
+                        vectors: vectors,
+                        banner: detached
+                            ? 'Desprendida: m sigue recta tangente a ' + fmt(ana.vDetach, 2) + ' m/s; disco sigue a ω₂ = ' + fmt(y[1], 3) + ' rad/s'
+                            : (stuck ? 'Partícula adherida: I sube y ω baja a ' + fmt(y[1], 3) + ' rad/s' : 'Acelerando disco con F = ' + p.F + ' N')
+                    };
+                }
+            };
+        }
+    };
+
+    return [t6_p2, t6_p8, t6_p5, t6_p6, t6_p14, t6_p3, t6_p4, t6_p9, t6_p11, t6_p15, t6_p12, t6_p13, t6_p10, t6_p1];
 }));

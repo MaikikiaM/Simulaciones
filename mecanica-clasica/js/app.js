@@ -9,8 +9,11 @@
     var fmt = RK4.fmt;
 
     // DOM refs
+    var listFundamentalsEl = document.getElementById('list-fundamentals');
     var listParticlesEl = document.getElementById('list-particles');
     var listRigidEl = document.getElementById('list-rigid');
+    var listElasticityEl = document.getElementById('list-elasticity');
+    var filterBarEl = document.getElementById('topic-filter-bar');
     var canvas2d = document.getElementById('canvas-2d');
     var container3d = document.getElementById('container-3d');
     var vectorTogglesEl = document.getElementById('vector-toggles');
@@ -105,8 +108,28 @@
                 container.appendChild(btn);
             });
         }
+        renderGroup(Catalog.fundamentals, listFundamentalsEl);
         renderGroup(Catalog.particles, listParticlesEl);
         renderGroup(Catalog.rigid, listRigidEl);
+        renderGroup(Catalog.elasticity, listElasticityEl);
+
+        if (filterBarEl) {
+            var chips = filterBarEl.querySelectorAll('.filter-chip');
+            var sections = document.querySelectorAll('.topic-section');
+            for (var i = 0; i < chips.length; i++) {
+                (function (chip) {
+                    chip.addEventListener('click', function () {
+                        var f = chip.dataset.filter;
+                        for (var j = 0; j < chips.length; j++) chips[j].classList.remove('active');
+                        chip.classList.add('active');
+                        for (var k = 0; k < sections.length; k++) {
+                            var show = (f === 'all' || sections[k].dataset.topic === f);
+                            sections[k].classList.toggle('hidden', !show);
+                        }
+                    });
+                })(chips[i]);
+            }
+        }
     }
 
     function updateSidebarActive() {
@@ -398,6 +421,6 @@
 
     // Init
     buildSidebar();
-    selectProblem('t5_p3');
+    selectProblem(Catalog.all[0].id);
     requestAnimationFrame(loop);
 })();

@@ -13,7 +13,7 @@
             <div class="brand-badge">Φ</div>
             <div>
                 <h1>Mecánica Clásica · Simulador RK4</h1>
-                <span>Sistemas de Partículas (T5) &amp; Sólido Rígido (T6)</span>
+                <span>Fundamentos (T1–T4) · Partículas (T5) · Sólido Rígido y Elasticidad (T6)</span>
             </div>
         </div>
 
@@ -37,20 +37,44 @@
     <main class="workspace">
         <!-- Columna Izquierda: Ruta Pedagógica desde 0 -->
         <aside class="sidebar">
-            <section>
+            <div class="topic-filter-bar" id="topic-filter-bar">
+                <button class="filter-chip active" data-filter="all">Todos (35)</button>
+                <button class="filter-chip" data-filter="fundamentals">Fund. (4)</button>
+                <button class="filter-chip" data-filter="particles">Partículas (13)</button>
+                <button class="filter-chip" data-filter="rigid">Sólido (14)</button>
+                <button class="filter-chip" data-filter="elasticity">Elast. (4)</button>
+            </div>
+
+            <section class="topic-section" data-topic="fundamentals">
+                <div class="topic-header">
+                    <span>Fundamentos (Desde 0)</span>
+                    <span>T1–T4 · 4 niveles</span>
+                </div>
+                <div id="list-fundamentals" class="problem-list"></div>
+            </section>
+
+            <section class="topic-section" data-topic="particles">
                 <div class="topic-header">
                     <span>Sistemas de Partículas</span>
-                    <span>T5 · 6 niveles</span>
+                    <span>T5 · 13 niveles</span>
                 </div>
                 <div id="list-particles" class="problem-list"></div>
             </section>
 
-            <section>
+            <section class="topic-section" data-topic="rigid">
                 <div class="topic-header">
                     <span>Sólido Rígido</span>
-                    <span>T6 · 7 niveles</span>
+                    <span>T6a · 14 niveles</span>
                 </div>
                 <div id="list-rigid" class="problem-list"></div>
+            </section>
+
+            <section class="topic-section" data-topic="elasticity">
+                <div class="topic-header">
+                    <span>Elasticidad y Torsión</span>
+                    <span>T6b · 4 niveles</span>
+                </div>
+                <div id="list-elasticity" class="problem-list"></div>
             </section>
         </aside>
 
@@ -153,8 +177,10 @@
     <script src="lib/three.min.js"></script>
     <script src="lib/OrbitControls.js"></script>
     <script src="js/rk4.js"></script>
+    <script src="js/problems_fundamentals.js"></script>
     <script src="js/problems_particles.js"></script>
     <script src="js/problems_rigid.js"></script>
+    <script src="js/problems_elasticity.js"></script>
     <script src="js/problems_catalog.js"></script>
     <script src="js/renderer2d.js"></script>
     <script src="js/renderer3d.js"></script>

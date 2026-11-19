@@ -95,9 +95,12 @@
         if (mode === '3d-p4') {
             this.camera.position.set(0, 10.5, 12.5);
             this.controls.target.set(0, 0, -1.0);
-        } else if (mode === '3d-p3') {
+        } else if (mode === '3d-p3' || mode === '3d-p9') {
             this.camera.position.set(2.9, 2.35, 3.6);
             this.controls.target.set(0, 0.95, 0);
+        } else if (mode === '3d-p17') {
+            this.camera.position.set(2.3, 1.85, 2.8);
+            this.controls.target.set(0, 0.35, 0);
         } else {
             this.camera.position.set(2.8, 2.0, 3.0);
             this.controls.target.set(0, 0, 0);
@@ -272,6 +275,116 @@
             '<span style="color:#fbbf24">■ L_plat+hombre (hacia abajo)</span>';
     };
 
+    Renderer3D.prototype._buildP9 = function () {
+        this._clearRoot();
+        this.grid.position.y = -0.15;
+        this.resetView('3d-p9');
+
+        var platGroup = new THREE.Group();
+        var disc = new THREE.Mesh(
+            new THREE.CylinderGeometry(1.15, 1.15, 0.12, 48),
+            new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.4, roughness: 0.5 })
+        );
+        disc.position.y = -0.06;
+        platGroup.add(disc);
+
+        var stripe = new THREE.Mesh(
+            new THREE.BoxGeometry(2.2, 0.02, 0.09),
+            new THREE.MeshBasicMaterial({ color: 0x38bdf8 })
+        );
+        stripe.position.y = 0.01;
+        platGroup.add(stripe);
+
+        var bodyMat = new THREE.MeshStandardMaterial({ color: 0x60a5fa, roughness: 0.4 });
+        var torso = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.16, 1.1, 18), bodyMat);
+        torso.position.y = 0.58;
+        var head = new THREE.Mesh(new THREE.SphereGeometry(0.16, 18, 18), bodyMat);
+        head.position.y = 1.3;
+        platGroup.add(torso, head);
+
+        // Hand-held horizontal wheel (axis vertical, spinning independently)
+        var wheelGroup = new THREE.Group();
+        wheelGroup.position.set(0, 1.0, 0.42);
+        var rim = new THREE.Mesh(
+            new THREE.TorusGeometry(0.38, 0.055, 14, 36),
+            new THREE.MeshStandardMaterial({ color: 0xfb7185, metalness: 0.35, roughness: 0.35 })
+        );
+        rim.rotation.x = Math.PI / 2;
+        var hub = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.06, 0.06, 0.14, 16),
+            new THREE.MeshStandardMaterial({ color: 0xe2e8f0 })
+        );
+        var spoke1 = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.025, 0.03), new THREE.MeshBasicMaterial({ color: 0xfef08a }));
+        var spoke2 = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.025, 0.72), new THREE.MeshBasicMaterial({ color: 0xfef08a }));
+        wheelGroup.add(rim, hub, spoke1, spoke2);
+        platGroup.add(wheelGroup);
+        this.rootGroup.add(platGroup);
+
+        var arrowLwheel = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0.32, 1.35, 0.42), 0.75, 0xfb7185, 0.18, 0.09);
+        var arrowLplat = new THREE.ArrowHelper(new THREE.Vector3(0, -1, 0), new THREE.Vector3(-0.32, 1.55, 0), 0.75, 0x22d3ee, 0.18, 0.09);
+        this.rootGroup.add(arrowLwheel, arrowLplat);
+
+        this.objs = { platGroup: platGroup, wheelGroup: wheelGroup, arrowLwheel: arrowLwheel, arrowLplat: arrowLplat };
+        this.legendEl.innerHTML =
+            '<span style="color:#fb7185">■ L_rueda (+Y)</span>' +
+            '<span style="color:#22d3ee">■ L_plat+persona (−Y)</span>' +
+            '<span style="color:#fbbf24">● L_total = 0</span>';
+    };
+
+    Renderer3D.prototype._buildP17 = function () {
+        this._clearRoot();
+        this.grid.position.y = -0.35;
+        this.resetView('3d-p17');
+
+        // Top ceiling support bracket
+        var ceiling = new THREE.Mesh(
+            new THREE.BoxGeometry(1.6, 0.08, 0.5),
+            new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.5, roughness: 0.4 })
+        );
+        ceiling.position.y = 1.55;
+        this.rootGroup.add(ceiling);
+
+        // Brass torsion wire (vertical)
+        var wire = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.022, 0.022, 1.55, 16),
+            new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.6, roughness: 0.3 })
+        );
+        wire.position.y = 0.775;
+        this.rootGroup.add(wire);
+
+        // Reference zero marker on floor
+        var refMark = new THREE.Mesh(
+            new THREE.BoxGeometry(0.06, 0.02, 1.3),
+            new THREE.MeshBasicMaterial({ color: 0x475569 })
+        );
+        refMark.position.y = -0.34;
+        this.rootGroup.add(refMark);
+
+        // Oscillating flywheel disk
+        var diskGroup = new THREE.Group();
+        var disk = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.95, 0.95, 0.14, 48),
+            new THREE.MeshStandardMaterial({ color: 0x38bdf8, metalness: 0.45, roughness: 0.35 })
+        );
+        var pointer = new THREE.Mesh(
+            new THREE.BoxGeometry(0.08, 0.03, 0.95),
+            new THREE.MeshBasicMaterial({ color: 0xfb7185 })
+        );
+        pointer.position.set(0, 0.085, 0.475);
+        diskGroup.add(disk, pointer);
+        this.rootGroup.add(diskGroup);
+
+        var arrowTau = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0.28, 0.2, 0), 0.75, 0xfbbf24, 0.18, 0.09);
+        var arrowOmega = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(-0.28, 0.2, 0), 0.75, 0x22d3ee, 0.18, 0.09);
+        this.rootGroup.add(arrowTau, arrowOmega);
+
+        this.objs = { diskGroup: diskGroup, arrowTau: arrowTau, arrowOmega: arrowOmega };
+        this.legendEl.innerHTML =
+            '<span style="color:#38bdf8">● Volante regulador</span>' +
+            '<span style="color:#22d3ee">■ ω(t) angular</span>' +
+            '<span style="color:#fbbf24">■ τ = −D·θ (restaurador)</span>';
+    };
+
     Renderer3D.prototype.render = function (renderState) {
         if (!this.ready) return;
 
@@ -281,6 +394,8 @@
             if (mode === '3d-p1') this._buildP1();
             else if (mode === '3d-p3') this._buildP3();
             else if (mode === '3d-p4') this._buildP4();
+            else if (mode === '3d-p9') this._buildP9();
+            else if (mode === '3d-p17') this._buildP17();
         }
 
         if (mode === '3d-p1') {
@@ -366,6 +481,40 @@
                 this.objs.proj.visible = false;
                 this.objs.projTrail.visible = false;
                 this.objs.arrowL.visible = false;
+            }
+        } else if (mode === '3d-p9') {
+            this.objs.platGroup.rotation.y = renderState.thetaPlat;
+            this.objs.wheelGroup.rotation.y = renderState.thetaWheelRel;
+            var lMag = Math.abs(renderState.Lwheel);
+            if (lMag > 1e-4) {
+                this.objs.arrowLwheel.visible = true;
+                this.objs.arrowLplat.visible = true;
+                var len9 = Math.max(0.3, Math.min(0.95, 0.25 + lMag * 0.025));
+                this.objs.arrowLwheel.setDirection(new THREE.Vector3(0, renderState.Lwheel >= 0 ? 1 : -1, 0));
+                this.objs.arrowLwheel.setLength(len9, 0.18, 0.09);
+                this.objs.arrowLplat.setDirection(new THREE.Vector3(0, renderState.Lwheel >= 0 ? -1 : 1, 0));
+                this.objs.arrowLplat.setLength(len9, 0.18, 0.09);
+            } else {
+                this.objs.arrowLwheel.visible = false;
+                this.objs.arrowLplat.visible = false;
+            }
+        } else if (mode === '3d-p17') {
+            this.objs.diskGroup.rotation.y = renderState.theta;
+            var tau = renderState.tau;
+            if (Math.abs(tau) > 1e-6) {
+                this.objs.arrowTau.visible = true;
+                this.objs.arrowTau.setDirection(new THREE.Vector3(0, tau >= 0 ? 1 : -1, 0));
+                this.objs.arrowTau.setLength(Math.max(0.28, Math.min(0.95, 0.25 + Math.abs(tau) * 35)), 0.18, 0.09);
+            } else {
+                this.objs.arrowTau.visible = false;
+            }
+            var om = renderState.omega;
+            if (Math.abs(om) > 1e-4) {
+                this.objs.arrowOmega.visible = true;
+                this.objs.arrowOmega.setDirection(new THREE.Vector3(0, om >= 0 ? 1 : -1, 0));
+                this.objs.arrowOmega.setLength(Math.max(0.28, Math.min(0.95, 0.25 + Math.abs(om) * 0.6)), 0.18, 0.09);
+            } else {
+                this.objs.arrowOmega.visible = false;
             }
         }
 

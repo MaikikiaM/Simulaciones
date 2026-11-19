@@ -179,6 +179,40 @@ html, body {
     gap: 14px;
 }
 
+.topic-filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding-bottom: 4px;
+}
+
+.filter-chip {
+    background: rgba(19, 28, 49, 0.7);
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 3px 7px;
+    font-size: 10.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.filter-chip:hover {
+    color: var(--text-main);
+    border-color: var(--border-bright);
+}
+
+.filter-chip.active {
+    background: rgba(56, 189, 248, 0.18);
+    color: var(--cyan-bright);
+    border-color: var(--cyan);
+}
+
+.topic-section.hidden {
+    display: none;
+}
+
 .topic-header {
     font-size: 11px;
     font-weight: 800;
