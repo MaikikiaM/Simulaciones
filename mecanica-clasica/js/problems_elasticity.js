@@ -99,6 +99,7 @@
             var y = [r0, 0, -th0, 0];
             var t = 0;
             var simVMax = 0, simTMax = 0, simDLMax = 0;
+            var reachedBottom = false;
             var trails = [];
 
             function derivs(st) {
@@ -117,6 +118,7 @@
                     for (var i = 0; i < steps; i++) {
                         y = rk4Integrate(y, t, h, h, derivs);
                         t += h;
+                        if (y[2] >= 0) reachedBottom = true;
                         var spd = Math.hypot(y[1], y[0] * y[3]);
                         var T = y[0] > p.L ? k * (y[0] - p.L) : 0;
                         if (spd > simVMax) simVMax = spd;
@@ -151,10 +153,10 @@
                 },
                 compareWithSim: function () {
                     return [
-                        { label: 'v_máx', unit: 'm/s', theo: ana.vMax, sim: simVMax > 0.1 ? simVMax : NaN },
-                        { label: 'T_máx', unit: 'N', theo: ana.TMax, sim: simTMax > 1 ? simTMax : NaN },
-                        { label: 'ΔL_máx', unit: 'mm', theo: ana.dL * 1000, sim: simDLMax > 0 ? simDLMax * 1000 : NaN },
-                        { label: 'σ_máx', unit: 'MPa', theo: ana.sigmaMax / 1e6, sim: simTMax > 1 ? (simTMax / ana.A) / 1e6 : NaN }
+                        { label: 'v_máx', unit: 'm/s', theo: ana.vMax, sim: reachedBottom ? simVMax : NaN },
+                        { label: 'T_máx', unit: 'N', theo: ana.TMax, sim: reachedBottom ? simTMax : NaN },
+                        { label: 'ΔL_máx', unit: 'mm', theo: ana.dL * 1000, sim: reachedBottom ? simDLMax * 1000 : NaN },
+                        { label: 'σ_máx', unit: 'MPa', theo: ana.sigmaMax / 1e6, sim: reachedBottom ? (simTMax / ana.A) / 1e6 : NaN }
                     ];
                 },
                 getRenderState: function () {
@@ -168,8 +170,9 @@
                     var sigma = T / ana.A;
                     var overLimit = sigma > ana.sigmaE;
                     var span = Math.max(2.0, p.L * 0.95);
+                    var minY = Math.min(-0.35, my - 0.45);
                     return {
-                        bounds: { minX: -span, maxX: span, minY: -0.35, maxY: pyPivot + 0.35 },
+                        bounds: { minX: -span, maxX: span, minY: minY, maxY: pyPivot + 0.35 },
                         lines: [
                             { x1: -span * 0.6, y1: pyPivot, x2: span * 0.6, y2: pyPivot, color: '#475569', width: 5 }
                         ],
@@ -388,15 +391,20 @@
             var coolDuration = 5.0;
             var y = [0]; // [progress 0..1 from 0°C to -5°C]
             var t = 0;
+            var simBreakP = NaN;
 
             function derivs() { return [t < coolDuration ? 1 / coolDuration : 0]; }
 
             return {
                 step: function (dt) {
                     if (t >= coolDuration) return;
+                    var pPrev = y[0];
                     y = rk4Integrate(y, t, Math.min(dt, coolDuration - t), 0.01, derivs);
                     t = Math.min(coolDuration, t + dt);
                     if (y[0] > 1) y[0] = 1;
+                    if (isNaN(simBreakP) && ana.dP * pPrev < ana.sigRot && ana.dP * y[0] >= ana.sigRot) {
+                        simBreakP = ana.sigRot / 1e6;
+                    }
                 },
                 getObservables: function () {
                     var prog = y[0];
@@ -425,7 +433,7 @@
                     return [
                         { label: 'ΔP final (−5 °C)', unit: 'MPa', theo: ana.dP / 1e6, sim: done ? curP / 1e6 : NaN },
                         { label: 'Fuerza pared', unit: 'MN', theo: ana.F / 1e6, sim: done ? curF / 1e6 : NaN },
-                        { label: 'Umbral fractura', unit: 'MPa', theo: p.sigRot_MPa, sim: curP / 1e6 }
+                        { label: 'Fractura en σ_rot', unit: 'MPa', theo: ana.fractures ? p.sigRot_MPa : NaN, sim: simBreakP }
                     ];
                 },
                 getRenderState: function () {

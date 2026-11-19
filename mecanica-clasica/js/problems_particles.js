@@ -2071,8 +2071,9 @@
                     ];
                 },
                 getRenderState: function () {
+                    var maxY = Math.max(p.H + 10, ana.h1New + 8, y1[0] + 6);
                     return {
-                        bounds: { minX: -12, maxX: 12, minY: -5, maxY: p.H + 10 },
+                        bounds: { minX: -12, maxX: 12, minY: -5, maxY: maxY },
                         polys: [
                             { pts: [{ x: -5.5, y: 0 }, { x: -2.5, y: 0 }, { x: -2.5, y: p.H }, { x: -5.5, y: p.H }], fill: 'rgba(51, 65, 85, 0.45)', stroke: '#64748b', lineWidth: 2 }
                         ],
@@ -2217,8 +2218,12 @@
                 getRenderState: function () {
                     var M = p.mh + p.mc;
                     var span = Math.max(20, p.vh1 * 1.2);
+                    var minX = Math.min(-p.vc1 * 1.3 - 2, c[0] - 3);
+                    var maxX = Math.max(20, p.vc1 * 2.2, c[0] + 4);
+                    var minY = Math.min(-span * 0.9, c[1] - 4, h[1] - 4);
+                    var maxY = Math.max(span * 1.1, h[1] + 4);
                     return {
-                        bounds: { minX: -p.vc1 * 1.3 - 2, maxX: Math.max(20, p.vc1 * 2.2), minY: -span * 0.9, maxY: span * 1.1 },
+                        bounds: { minX: minX, maxX: maxX, minY: minY, maxY: maxY },
                         lines: [
                             { x1: -p.vc1 * 1.2, y1: 0, x2: p.vc1 * 2.0, y2: 0, color: 'rgba(148,163,184,0.25)', width: 1.5, dash: [4, 4] }
                         ],
@@ -2373,12 +2378,13 @@
                     ];
                 },
                 getRenderState: function () {
+                    var minX = Math.min(-12, -p.vf0 * tHit - 4);
                     var maxX = Math.max(p.xf + 5, ana.xa + 5, 42);
                     var M = ana.mf + ana.ma;
                     return {
-                        bounds: { minX: -12, maxX: maxX, minY: -0.6, maxY: Math.max(5, p.h + 2.2) },
+                        bounds: { minX: minX, maxX: maxX, minY: -0.6, maxY: Math.max(5, p.h + 2.2) },
                         lines: [
-                            { x1: -12, y1: 0, x2: maxX, y2: 0, color: '#22c55e', width: 3 },
+                            { x1: minX, y1: 0, x2: maxX, y2: 0, color: '#22c55e', width: 3 },
                             { x1: 0, y1: 0, x2: 0, y2: p.h, color: '#78716c', width: 6 }
                         ],
                         trails: [
@@ -2499,7 +2505,7 @@
                     var phi = (s - sEntry) / R;
                     return -p.g * Math.sin(phi);
                 }
-                if (s <= sCollide) return 0;
+                if (s <= sCollide || !collided) return 0;
                 return -p.g * Math.sin(rampAngle);
             }
 

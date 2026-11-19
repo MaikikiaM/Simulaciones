@@ -71,3 +71,28 @@ SESIÓN: 15/11/2026 - NORMALIZACIÓN DE REGLAS Y REGISTRO LITERAL DE PROMPTS
 - `Simulaciones/AGENTS.md`: creado protocolo operativo local reforzando `- Prompts literales del usuario:` obligatorio antes de `- Objetivo:`, compatibilidad offline `file://` y validación numérica/WebGL.
 - `Simulaciones/registro.txt`: completados los prompts preparatorios del 13/11/2026 (22:44 y 22:48) y marcas horarias exactas desde `33e2988c`, conservando todos los detalles técnicos y de validación.
 ================================================================================
+
+
+================================================================================
+SESIÓN: 19/11/2026 - AMPLIACIÓN COMPLETA DE TODOS LOS TEMAS (35 SIMULACIONES)
+================================================================================
+
+- Prompts literales del usuario:
+  * [19/11/2026 17:33]: "como veo las simulaciones?"
+  * [19/11/2026 17:50]: "Mete problemas de todos los temas dentro del ejecutable. Basicamente, haz simulaciones de los ejercicios que consideres de todos los temas /goal"
+- Objetivo: Incorporar todos los bloques temáticos dentro de `mecanica-clasica/index.html` (Fundamentos T1–T4, Sistemas de Partículas T5 completo, Sólido Rígido T6a completo y Elasticidad/Torsión T6b).
+
+**Cambios aplicados:**
+1. `mecanica-clasica/js/problems_fundamentals.js`: creadas 4 simulaciones base (`T1·F1` tiro parabólico, `T2·F2` plano inclinado con rozamiento estático/cinético, `T3·F3` oscilador armónico masa-muelle, `T4·F4` órbita gravitatoria de Kepler).
+2. `mecanica-clasica/js/problems_particles.js`: ampliado de 6 a 13 ejercicios de `Problemas T5.pdf` añadiendo `T5·P2` (lámina con 2 orificios), `T5·P5` (vaso con zumo variable), `T5·P1` (3 masas y 2 resortes), `T5·P8` (2 piedras en vertical), `T5·P14` (halcón y cuervo 2D), `T5·P10` (flecha y manzana) y `T5·P11` (carrito en bucle circular y tope).
+3. `mecanica-clasica/js/problems_rigid.js`: ampliado de 7 a 14 ejercicios de `Hoja_problemas_team6.pdf` añadiendo `T6·P5` (tronco flotante), `T6·P6` (rueda contra escalón), `T6·P14` (escalera con rozamiento límite), `T6·P9` (plataforma y rueda en 3D), `T6·P15` (frenado bloqueo vs ABS), `T6·P12` (hilo ideal que se tensa) y `T6·P13` (disco con par y partícula que se desprende).
+4. `mecanica-clasica/js/problems_elasticity.js`: creado módulo de Elasticidad y Torsión con `T6·P16` (péndulo elástico acero vs aluminio), `T6·P17` (volante reloj de torsión 3D), `T6·P18` (grieta de granito por congelación de agua) y `T6·P19` (ensayo de tracción y curva σ–ε).
+5. `mecanica-clasica/js/renderer2d.js`, `js/renderer3d.js`, `js/problems_catalog.js`, `js/app.js`, `css/styles.css`, `index.html`: soporte para polígonos, círculos/arcos, muelles, cajas rotadas, etiquetas, escenas 3D `3d-p9` y `3d-p17`, y barra de filtros por tema (`Todos (35)`, `Fund. (4)`, `Partículas (13)`, `Sólido (14)`, `Elast. (4)`).
+6. `mecanica-clasica/tests/physics.test.js`: ampliada la suite a 24 tests verificando las 35 simulaciones y sus leyes de conservación.
+
+**Validación:**
+- `node --check` en todos los módulos JS y tests: `SYNTAX_OK`.
+- `node mecanica-clasica/tests/physics.test.js`: **24 PASSED, 0 FAILED**.
+- Auditoría automática de `bounds` (`DEF / MIN / MAX`) y error analítico vs RK4: **35/35 OK**.
+- Microsoft Edge headless con WebGL (`file://`): 35 problemas, filtros por tema y escenas 3D `3d-p9`/`3d-p17` con `errors: []`, `warns: []`.
+================================================================================

@@ -403,7 +403,7 @@
                     y = rk4Integrate(y, t, dt, 0.004, derivs);
                     t += dt;
                     simVMax = Math.max(simVMax, Math.abs(y[1]));
-                    if (isNaN(simT) && t > 0.2 * ana.T && yPrev[1] < 0 && y[1] >= 0) {
+                    if (isNaN(simT) && t > 0.25 * ana.T && yPrev[1] > 0 && y[1] <= 0) {
                         var ev = bisectEvent(yPrev, t - dt, dt, derivs, function (st) { return st[1]; }, 22);
                         simT = ev.tEvent;
                     }
@@ -548,7 +548,7 @@
                     var yPrev = y;
                     y = rk4Integrate(y, t, dt, 0.002, derivs);
                     t += dt;
-                    if (isNaN(simT) && t > 0.25 && yPrev[1] < 0 && y[1] >= 0 && y[0] > 0) {
+                    if (isNaN(simT) && t > 0.25 * ana.T && yPrev[1] < 0 && y[1] >= 0 && y[0] > 0) {
                         var ev = bisectEvent(yPrev, t - dt, dt, derivs, function (st) { return st[1]; }, 22);
                         simT = ev.tEvent;
                     }

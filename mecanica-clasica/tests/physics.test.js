@@ -313,9 +313,10 @@ test('T6-P1: Varilla inclinada 3D -> I_eje, L_O no paralelo a ω, principal en �
     approx(ana90.tauMag, 0, 1e-9, 'τ = 0 en α=90°');
 });
 
-console.log('\n=== Tests de robustez y renderState (todos los 13 problemas y extremos) ===');
+console.log('\n=== Tests de robustez y renderState (todos los 35 problemas y extremos) ===');
 
-test('Todos los 13 problemas generan analítico, observables, comparativa y renderState sin NaN en t=0..T', function () {
+test('Todos los 35 problemas generan analítico, observables, comparativa y renderState sin NaN en t=0..T', function () {
+    assert.strictEqual(Catalog.all.length, 35, 'Catálogo debe tener 35 simulaciones');
     Catalog.all.forEach(function (prob) {
         var defP = Catalog.getDefaultParams(prob);
         var ana = prob.solveAnalytical(defP);
@@ -329,7 +330,7 @@ test('Todos los 13 problemas generan analítico, observables, comparativa y rend
             assert(rs && typeof rs.banner === 'string', prob.id + ' renderState válido');
             if (rs.masses) {
                 rs.masses.forEach(function (m) {
-                    assert(isFinite(m.x) && isFinite(m.y) && isFinite(m.r), prob.id + ' masa finita');
+                    assert(isFinite(m.x) && isFinite(m.y) && (m.r === undefined || isFinite(m.r)), prob.id + ' masa finita');
                 });
             }
             if (rs.wheels) {
@@ -452,6 +453,123 @@ test('Auditoría general: bounds negativos T5-P3, coche dominante T5-P6, separac
     s10.step(0.05);
     var cm1y = s10.getRenderState().trails[0].pts[1].y;
     assert(cm1y > cm0y, 'T6-P10 trail CM sube monótonamente desde t=0');
+});
+
+console.log('\n=== Tests de Fundamentos (T1-T4), Nuevos T5, Nuevos T6 y Elasticidad ===');
+
+test('Fundamentos F1-F4: Tiro parabólico, Plano inclinado, Oscilador M.A.S. y Órbita Kepler', function () {
+    // F1
+    var f1 = Catalog.getById('f_p1');
+    var s1 = f1.createSimulation(Catalog.getDefaultParams(f1));
+    runSteps(s1, 4.5, 0.01);
+    var c1 = s1.compareWithSim();
+    approx(c1[2].sim, (25 * 25) / 9.8, 0.05, 'F1 alcance 45 deg');
+
+    // F2
+    var f2 = Catalog.getById('f_p2');
+    var p2 = Catalog.getDefaultParams(f2);
+    var s2 = f2.createSimulation(p2);
+    runSteps(s2, 3.0, 0.01);
+    assert.strictEqual(s2.getObservables().finished, true, 'F2 desliza hasta la base');
+
+    // F3
+    var f3 = Catalog.getById('f_p3');
+    var p3 = Catalog.getDefaultParams(f3);
+    var s3 = f3.createSimulation(p3);
+    var E30 = s3.getObservables().Etot;
+    runSteps(s3, 4.0, 0.01);
+    approx(s3.getObservables().Etot, E30, 1e-4, 'F3 conserva energía en M.A.S.');
+
+    // F4
+    var f4 = Catalog.getById('f_p4');
+    var p4 = Catalog.getDefaultParams(f4);
+    var s4 = f4.createSimulation(p4);
+    var L40 = s4.getObservables().Lz;
+    var E40 = s4.getObservables().Etot;
+    runSteps(s4, 3.0, 0.01);
+    approx(s4.getObservables().Lz, L40, 1e-4, 'F4 conserva momento angular');
+    approx(s4.getObservables().Etot, E40, 1e-3, 'F4 conserva energía orbital');
+});
+
+test('Nuevos Sistemas de Partículas: T5-P1, T5-P2, T5-P5, T5-P8, T5-P10, T5-P11, T5-P14', function () {
+    var p1 = Catalog.getById('t5_p1');
+    var a1 = p1.solveAnalytical(Catalog.getDefaultParams(p1)).values;
+    approx(a1.a12x, 10 / 6, 1e-9, 'T5-P1 a_CM(1,2)');
+
+    var p2 = Catalog.getById('t5_p2');
+    var a2 = p2.solveAnalytical(Catalog.getDefaultParams(p2)).values;
+    approx(a2.dcm, Math.cos(RK4.degToRad(75)) / 14, 1e-6, 'T5-P2 |R_CM|');
+
+    var p5 = Catalog.getById('t5_p5');
+    var a5 = p5.solveAnalytical(Catalog.getDefaultParams(p5)).values;
+    approx(a5.yEmpty, 1.7, 1e-6, 'T5-P5 vaso vacío y_CM=1.7 cm');
+    approx(a5.yFull, 2.7069, 1e-3, 'T5-P5 vaso 3/4 y_CM');
+
+    var p8 = Catalog.getById('t5_p8');
+    var s8 = p8.createSimulation(Catalog.getDefaultParams(p8));
+    runSteps(s8, 4.5, 0.01);
+    approx(s8.compareWithSim()[2].sim, s8.compareWithSim()[2].theo, 0.1, 'T5-P8 h1 nueva');
+
+    var p10 = Catalog.getById('t5_p10');
+    var s10 = p10.createSimulation(Catalog.getDefaultParams(p10));
+    runSteps(s10, 1.2, 0.01);
+    approx(s10.compareWithSim()[0].sim, 18.284, 0.05, 'T5-P10 alcance manzana');
+
+    var p11 = Catalog.getById('t5_p11');
+    var s11 = p11.createSimulation(Catalog.getDefaultParams(p11));
+    runSteps(s11, 4.0, 0.01);
+    approx(s11.compareWithSim()[0].sim, 0.25, 1e-3, 'T5-P11 h_f=0.25 m');
+    approx(s11.compareWithSim()[1].sim, 29.4, 0.1, 'T5-P11 pérdida=29.4 J');
+
+    var p14 = Catalog.getById('t5_p14');
+    var a14 = p14.solveAnalytical(Catalog.getDefaultParams(p14)).values;
+    approx(a14.vc2, Math.sqrt(181), 1e-6, 'T5-P14 velocidad cuervo');
+});
+
+test('Nuevos Sólido Rígido y Elasticidad: T6-P5, P6, P9, P12, P13, P14, P15, P16, P17, P18, P19', function () {
+    approx(Catalog.getById('t6_p5').solveAnalytical(Catalog.getDefaultParams(Catalog.getById('t6_p5'))).values.xEndMan, 20 / 11, 1e-6, 'T6-P5 distancia orilla');
+    approx(Catalog.getById('t6_p6').solveAnalytical(Catalog.getDefaultParams(Catalog.getById('t6_p6'))).values.Fmin, 9.8 * Math.sqrt(0.05) / 0.2, 1e-5, 'T6-P6 F_min escalón');
+
+    var p9 = Catalog.getById('t6_p9');
+    var s9 = p9.createSimulation(Catalog.getDefaultParams(p9));
+    runSteps(s9, 1.5, 0.01);
+    approx(s9.getObservables().Lz, 0, 1e-6, 'T6-P9 L_total=0');
+    approx(s9.compareWithSim()[0].sim, -2 * Math.PI / 3, 1e-4, 'T6-P9 omega_p');
+
+    var p12 = Catalog.getById('t6_p12');
+    var s12 = p12.createSimulation(Catalog.getDefaultParams(p12));
+    runSteps(s12, 2.0, 0.01);
+    approx(s12.compareWithSim()[0].sim, 6.0, 1e-4, 'T6-P12 L_O conservado');
+
+    var p13 = Catalog.getById('t6_p13');
+    var s13 = p13.createSimulation(Catalog.getDefaultParams(p13));
+    runSteps(s13, 7.0, 0.01);
+    approx(s13.compareWithSim()[2].sim, 1.25, 1e-4, 'T6-P13 disco mantiene omega2=1.25 tras soltar m');
+
+    approx(Catalog.getById('t6_p14').solveAnalytical(Catalog.getDefaultParams(Catalog.getById('t6_p14'))).values.muCrit, Math.SQRT2 - 1, 1e-6, 'T6-P14 mu=sqrt(2)-1');
+    approx(Catalog.getById('t6_p15').solveAnalytical(Catalog.getDefaultParams(Catalog.getById('t6_p15'))).values.safeAbs, true, 0, 'T6-P15 ABS frena a tiempo');
+
+    // Elasticidad P16-P19
+    var p16 = Catalog.getById('t6_p16');
+    var par16 = Catalog.getDefaultParams(p16);
+    var a16 = p16.solveAnalytical(par16).values;
+    assert.strictEqual(a16.isElastic, false, 'T6-P16 acero supera 250 MPa');
+    par16.material = 1;
+    assert.strictEqual(p16.solveAnalytical(par16).values.isElastic, true, 'T6-P16 aluminio sí trabaja en régimen elástico');
+
+    var p17 = Catalog.getById('t6_p17');
+    var a17 = p17.solveAnalytical(Catalog.getDefaultParams(p17)).values;
+    approx(a17.dTarget4sMm, 1.164, 1e-2, 'T6-P17 diámetro hilo 1.164 mm');
+
+    var p18 = Catalog.getById('t6_p18');
+    var a18 = p18.solveAnalytical(Catalog.getDefaultParams(p18)).values;
+    approx(a18.dP / 1e6, 184.5, 1e-2, 'T6-P18 ΔP = 184.5 MPa');
+    assert.strictEqual(a18.fractures, true, 'T6-P18 fractura el granito');
+
+    var p19 = Catalog.getById('t6_p19');
+    var a19 = p19.solveAnalytical(Catalog.getDefaultParams(p19)).values;
+    approx(a19.E / 1e9, 60.0, 1e-6, 'T6-P19 E = 60 GPa');
+    approx(a19.sigmaE / 1e6, 100.0, 1e-6, 'T6-P19 sigma_e = 100 MPa');
 });
 
 console.log('\n=========================================');

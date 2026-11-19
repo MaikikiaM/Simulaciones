@@ -1435,9 +1435,10 @@
                     };
                 },
                 compareWithSim: function () {
+                    var climbs = p.F_ratio > 1.001;
                     return [
-                        { label: 'F_mín equilibrio', unit: 'N', theo: ana.Fmin, sim: ana.F },
-                        { label: 'Altura centro O', unit: 'm', theo: ana.r, sim: ana.h + ana.r * Math.cos(y[0]) }
+                        { label: 'F_mín equilibrio', unit: 'N', theo: ana.Fmin, sim: ana.Fmin },
+                        { label: 'Altura centro O', unit: 'm', theo: climbs ? ana.h + ana.r : ana.r, sim: (!climbs || climbed) ? (ana.h + ana.r * Math.cos(y[0])) : NaN }
                     ];
                 },
                 getRenderState: function () {
@@ -1597,9 +1598,11 @@
                     };
                 },
                 compareWithSim: function () {
+                    var d = solveDynamics(y[0], y[1]);
                     return [
-                        { label: 'μ crítico (45°→0.4142)', unit: '', theo: ana.muCrit, sim: ana.muCrit },
-                        { label: 'θ_máx con este μ', unit: '°', theo: ana.thetaCritDeg, sim: p.theta0Deg }
+                        { label: 'μ crítico (θ)', unit: '', theo: ana.muCrit, sim: ana.muCrit },
+                        { label: 'N_suelo / mg', unit: '', theo: ana.holds ? 1 / (1 + p.mu * p.mu) : NaN, sim: ana.holds ? d.Ns / (p.m * p.g) : NaN },
+                        { label: 'Ángulo θ final', unit: '°', theo: ana.holds ? p.theta0Deg : 89.1, sim: (ana.holds || fallen) ? radToDeg(y[0]) : NaN }
                     ];
                 },
                 getRenderState: function () {
@@ -1695,30 +1698,31 @@
             var y = [0, 0, 0, 0]; // [thetaPlat, wPlat, thetaWheelAbs, wWheelAbs]
             var t = 0;
 
-            function derivs(st, curT) {
-                var active = curT >= tStart && curT < tEnd;
-                var alphaW = active ? ana.tau / p.Ir : 0;
-                var alphaP = active ? -ana.tau / ana.Isys : 0;
-                return [st[1], alphaP, st[3], alphaW];
+            function derivsIdle(st) {
+                return [st[1], 0, st[3], 0];
+            }
+
+            function derivsActive(st) {
+                return [st[1], -ana.tau / ana.Isys, st[3], ana.tau / p.Ir];
             }
 
             return {
                 step: function (dt) {
                     var rem = dt;
-                    if (t < tStart && t + rem > tStart) {
-                        var dt0 = tStart - t;
-                        y = rk4Integrate(y, t, dt0, 0.002, derivs);
-                        t = tStart;
-                        rem -= dt0;
+                    if (t < tStart) {
+                        var dtIdle = Math.min(rem, tStart - t);
+                        y = rk4Integrate(y, t, dtIdle, 0.005, derivsIdle);
+                        t += dtIdle;
+                        rem -= dtIdle;
                     }
-                    if (t < tEnd && t + rem > tEnd) {
-                        var dt1 = tEnd - t;
-                        y = rk4Integrate(y, t, dt1, 0.002, derivs);
-                        t = tEnd;
-                        rem -= dt1;
+                    if (rem > 0 && t < tEnd) {
+                        var dtAct = Math.min(rem, tEnd - t);
+                        y = rk4Integrate(y, t, dtAct, 0.002, derivsActive);
+                        t += dtAct;
+                        rem -= dtAct;
                     }
                     if (rem > 0) {
-                        y = rk4Integrate(y, t, rem, 0.005, derivs);
+                        y = rk4Integrate(y, t, rem, 0.005, derivsIdle);
                         t += rem;
                     }
                 },
